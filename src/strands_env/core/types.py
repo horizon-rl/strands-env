@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
@@ -41,6 +42,7 @@ class TaskContext(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     ground_truth: Any = None
     conversation_history: Messages = Field(default_factory=list)
 
