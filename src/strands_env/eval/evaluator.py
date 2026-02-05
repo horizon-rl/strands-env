@@ -80,9 +80,8 @@ class Evaluator:
         self.results: dict[str, list[EvalSample]] = defaultdict(list)
         self.completed_ids: set[str] = set()  # Tracks individual sample IDs for checkpoint
 
-    def load_dataset(self, dataset_path: Path | str) -> Iterable[Action]:
+    def load_dataset(self) -> Iterable[Action]:
         """Load dataset from file. Override to implement custom dataset loading logic."""
-        logger.info(f"Loading dataset from: {dataset_path}")
         raise NotImplementedError("Evaluator subclasses must implement load_dataset()")
 
     def load_results(self) -> None:
