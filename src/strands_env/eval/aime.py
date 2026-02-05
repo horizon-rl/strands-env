@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from typing import Literal
 
 from datasets import load_dataset
 
@@ -48,7 +49,7 @@ AIME_HF_PATHS = {
 class AIMEEvaluator(Evaluator):
     """Evaluator for AIME math competition problems."""
 
-    def load_dataset(self, version: str = "2024") -> Iterable[Action]:
+    def load_dataset(self, version: Literal["2024", "2025"] = "2024") -> Iterable[Action]:
         """Load AIME dataset from HuggingFace."""
         logger.info(f"Loading AIME {version} dataset from: {AIME_HF_PATHS[version]['path']}")
         dataset = load_dataset(AIME_HF_PATHS[version]["path"], split=AIME_HF_PATHS[version]["split"])
