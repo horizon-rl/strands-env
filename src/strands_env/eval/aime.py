@@ -56,12 +56,18 @@ class AIMEEvaluator(Evaluator):
 
         actions = []
         for i, row in enumerate(dataset):
+            sample_id = row.get(AIME_HF_PATHS[version]["id_field"]) or i
             problem = row.get(AIME_HF_PATHS[version]["problem_field"], None)
             answer = row.get(AIME_HF_PATHS[version]["answer_field"], None)
-            if not all([problem, answer]):
+            if not all([sample_id, problem, answer]):
                 logger.warning(f"Missing problem or answer fields in row {i}, skipping row")
                 continue
-            actions.append(Action(message=str(problem), task_context=TaskContext(ground_truth=str(answer))))
+            actions.append(
+                Action(
+                    message=str(problem),
+                    task_context=TaskContext(id=f"aime_{version}_{sample_id}", ground_truth=str(answer)),
+                )
+            )
 
         logger.info(f"Loaded {len(actions)}/{len(dataset)} problems from AIME {version} dataset")
         return actions
