@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for AWS boto3 session caching."""
+"""Utilities for AWS boto3 session."""
 
 from __future__ import annotations
 
