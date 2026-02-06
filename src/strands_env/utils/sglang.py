@@ -19,6 +19,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
+import httpx
 from strands_sglang import SGLangClient
 
 _SGLANG_CLIENT_CONFIG = {
@@ -45,3 +46,10 @@ def get_cached_client_from_slime_args(args: Any) -> SGLangClient:
 def clear_clients() -> None:
     """Clear all cached `SGLangClient` instances."""
     get_cached_client.cache_clear()
+
+
+def get_model_id(base_url: str) -> str:
+    """Get the model ID from the SGLang server."""
+    response = httpx.get(f"{base_url}/get_model_info", timeout=5)
+    response.raise_for_status()
+    return response.json()["model_path"]
