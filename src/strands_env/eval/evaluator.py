@@ -63,7 +63,7 @@ class Evaluator:
         output_path: Path | str = Path.cwd() / "results.jsonl",
         save_interval: int = 10,
         keep_tokens: bool = False,
-        metric_fns: list[MetricFn] | None = None,
+        metric_fns: list[MetricFn] = [],
     ):
         """Initialize the evaluator.
 
@@ -74,7 +74,7 @@ class Evaluator:
             output_path: Path to JSONL file for saving results. Enables resume.
             save_interval: Flush results to disk every N completed samples.
             keep_tokens: Keep token-level observation in results (only valid for `SGLangModel` backends).
-            metric_fns: List of metric functions. Defaults to [pass_at_k_metric].
+            metric_fns: Additional metric functions. `pass@k` is always included.
         """
         self.env_factory: AsyncEnvFactory = env_factory
         self.max_concurrency = max_concurrency
@@ -83,12 +83,11 @@ class Evaluator:
         self.save_interval = save_interval
         self.keep_tokens = keep_tokens
 
-        # Default metric: pass@k for k in 1..n_samples_per_prompt
-        if metric_fns is None:
-            metric_fns = [
-                partial(pass_at_k_metric, k_values=list(range(1, n_samples_per_prompt + 1)), reward_threshold=1.0)
-            ]
-        self.metric_fns = metric_fns
+        # Always include pass@k, then any additional metrics
+        self.metric_fns: list[MetricFn] = [
+            partial(pass_at_k_metric, k_values=list(range(1, n_samples_per_prompt + 1)), reward_threshold=1.0)
+        ]
+        self.metric_fns += metric_fns
 
         # Runtime state
         self.results: dict[str, list[EvalSample]] = defaultdict(list)
