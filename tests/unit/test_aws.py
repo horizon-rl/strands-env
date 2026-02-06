@@ -46,16 +46,22 @@ class TestGetBoto3Session:
         session2 = get_boto3_session(region="us-west-2")
         assert session1 is not session2
 
-    def test_cached_by_profile(self):
+    @patch("strands_env.utils.aws.boto3.Session")
+    def test_cached_by_profile(self, mock_session_cls):
         """Same profile should return cached session."""
-        session1 = get_boto3_session(region="us-east-1", profile_name="default")
-        session2 = get_boto3_session(region="us-east-1", profile_name="default")
+        mock_session_cls.return_value = MagicMock()
+        session1 = get_boto3_session(region="us-east-1", profile_name="test-profile")
+        session2 = get_boto3_session(region="us-east-1", profile_name="test-profile")
         assert session1 is session2
+        # Session should only be created once due to caching
+        assert mock_session_cls.call_count == 1
 
-    def test_different_profiles_different_sessions(self):
+    @patch("strands_env.utils.aws.boto3.Session")
+    def test_different_profiles_different_sessions(self, mock_session_cls):
         """Different profiles should return different sessions."""
-        session1 = get_boto3_session(region="us-east-1", profile_name=None)
-        session2 = get_boto3_session(region="us-east-1", profile_name="default")
+        mock_session_cls.side_effect = [MagicMock(), MagicMock()]
+        session1 = get_boto3_session(region="us-east-1", profile_name="profile-a")
+        session2 = get_boto3_session(region="us-east-1", profile_name="profile-b")
         assert session1 is not session2
 
 
