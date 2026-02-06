@@ -219,3 +219,6 @@ uv.lock
 
 # Ignore DS_Store
 .DS_Store
+
+# Ignore results directory
+results/
