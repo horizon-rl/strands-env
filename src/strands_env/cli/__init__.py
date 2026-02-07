@@ -91,7 +91,7 @@ def list_cmd():
     help="AWS region for Bedrock.",
 )
 @click.option(
-    "--profile",
+    "--profile-name",
     type=str,
     default=None,
     help="AWS profile name for Bedrock.",
@@ -142,7 +142,7 @@ def list_cmd():
 )
 # Eval settings
 @click.option(
-    "--n-samples",
+    "--n-samples-per-prompt",
     type=int,
     default=1,
     help="Number of samples per prompt (for pass@k).",
@@ -172,13 +172,12 @@ def list_cmd():
     default=False,
     help="Keep token-level observations in results.",
 )
-# Verbosity
+# Debug
 @click.option(
-    "--verbose",
-    "-v",
+    "--debug",
     is_flag=True,
     default=False,
-    help="Enable verbose logging.",
+    help="Enable debug logging.",
 )
 def eval_cmd(
     benchmark: str,
@@ -189,7 +188,7 @@ def eval_cmd(
     model_id: str | None,
     tokenizer_path: str | None,
     region: str | None,
-    profile: str | None,
+    profile_name: str | None,
     role_arn: str | None,
     # Sampling
     temperature: float,
@@ -200,12 +199,12 @@ def eval_cmd(
     system_prompt: Path | None,
     max_tool_iterations: int,
     # Eval
-    n_samples: int,
+    n_samples_per_prompt: int,
     max_concurrency: int,
     output: Path,
     save_interval: int,
     keep_tokens: bool,
-    verbose: bool,
+    debug: bool,
 ):
     """Run benchmark evaluation.
 
@@ -215,7 +214,7 @@ def eval_cmd(
         strands-env eval aime --env my_env.py --backend sglang --n-samples 8
     """
     # Setup logging
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Validate benchmark first (fail fast)
@@ -240,7 +239,7 @@ def eval_cmd(
         model_id=model_id,
         tokenizer_path=tokenizer_path,
         region=region,
-        profile=profile,
+        profile_name=profile_name,
         role_arn=role_arn,
         sampling=sampling_config,
     )
@@ -250,7 +249,7 @@ def eval_cmd(
         verbose=False,  # Always False for eval
     )
     eval_config = EvalConfig(
-        n_samples_per_prompt=n_samples,
+        n_samples_per_prompt=n_samples_per_prompt,
         max_concurrency=max_concurrency,
         output_dir=output,
         save_interval=save_interval,
@@ -287,7 +286,7 @@ def eval_cmd(
     # Run evaluation
     click.echo(f"Running {benchmark} evaluation with {env_path}")
     click.echo(f"  Backend: {backend}, Model: {model_id or '(auto-detect)'}")
-    click.echo(f"  Samples per prompt: {n_samples}, Concurrency: {max_concurrency}")
+    click.echo(f"  Samples per prompt: {n_samples_per_prompt}, Concurrency: {max_concurrency}")
     click.echo(f"  Output directory: {output_dir}")
 
     results = asyncio.run(evaluator.run(actions))

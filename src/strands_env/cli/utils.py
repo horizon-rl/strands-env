@@ -73,7 +73,7 @@ def build_model_factory(config: ModelConfig, max_concurrency: int) -> ModelFacto
         if config.role_arn:
             session = get_assumed_role_session(config.role_arn, config.region)
         else:
-            session = get_boto3_session(config.region, config.profile)
+            session = get_boto3_session(config.region, config.profile_name)
         return bedrock_model_factory(session, config.model_id, sampling)
 
     else:

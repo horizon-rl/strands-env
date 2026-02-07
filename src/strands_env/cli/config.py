@@ -55,7 +55,7 @@ class ModelConfig:
     # Bedrock
     model_id: str | None = None
     region: str | None = None
-    profile: str | None = None  # AWS profile name
+    profile_name: str | None = None  # AWS profile name
     role_arn: str | None = None  # For role assumption
 
     # Sampling
