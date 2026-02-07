@@ -93,7 +93,7 @@ class EnvConfig:
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
         return {
-            "system_prompt_path": str(self.system_prompt_path) if self.system_prompt_path else None,
+            "system_prompt": self.system_prompt,  # Save actual content for reproducibility
             "max_tool_iterations": self.max_tool_iterations,
         }
 

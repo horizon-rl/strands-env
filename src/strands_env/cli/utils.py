@@ -63,10 +63,17 @@ def build_model_factory(config: ModelConfig, max_concurrency: int) -> ModelFacto
             raise click.ClickException(str(e))
 
         client = get_cached_client(config.base_url, max_concurrency)
-        model_id = config.model_id or get_model_id(config.base_url)
-        tokenizer_path = config.tokenizer_path or model_id
-        tokenizer = get_cached_tokenizer(tokenizer_path)
-        return sglang_model_factory(client=client, model_id=model_id, tokenizer=tokenizer, sampling_params=sampling)
+
+        # Resolve and backfill model_id/tokenizer_path for reproducibility
+        if not config.model_id:
+            config.model_id = get_model_id(config.base_url)
+        if not config.tokenizer_path:
+            config.tokenizer_path = config.model_id
+
+        tokenizer = get_cached_tokenizer(config.tokenizer_path)
+        return sglang_model_factory(
+            client=client, model_id=config.model_id, tokenizer=tokenizer, sampling_params=sampling
+        )
 
     elif config.backend == "bedrock":
         from strands_env.utils.aws import get_assumed_role_session, get_boto3_session

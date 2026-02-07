@@ -37,9 +37,9 @@ strands-env eval --evaluator <evaluator_file> --env <hook_file> [options]
 - `--role-arn` - AWS role ARN to assume for Bedrock
 
 **Sampling options:**
-- `--temperature` - Sampling temperature (default: 1.0)
+- `--temperature` - Sampling temperature (default: 0.7)
 - `--max-tokens` - Maximum new tokens (default: 16384)
-- `--top-p` - Top-p sampling (default: 1.0)
+- `--top-p` - Top-p sampling (default: 0.95)
 - `--top-k` - Top-k sampling
 
 **Evaluation options:**

@@ -114,7 +114,7 @@ def list_cmd():
 @click.option(
     "--temperature",
     type=float,
-    default=1.0,
+    default=0.7,
     help="Sampling temperature.",
 )
 @click.option(
@@ -126,7 +126,7 @@ def list_cmd():
 @click.option(
     "--top-p",
     type=float,
-    default=1.0,
+    default=0.95,
     help="Top-p sampling parameter.",
 )
 @click.option(
@@ -293,18 +293,6 @@ def eval_cmd(
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save config for reproducibility
-    config_data = {
-        "benchmark": benchmark_name,
-        "env_path": str(env_path),
-        "model": model_config.to_dict(),
-        "env": env_config.to_dict(),
-        "eval": eval_config.to_dict(),
-    }
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=2)
-    click.echo(f"Saved config to {config_path}")
-
     # Create evaluator
     evaluator = evaluator_cls(
         env_factory=env_factory,
@@ -315,8 +303,35 @@ def eval_cmd(
         keep_tokens=eval_config.keep_tokens,
     )
 
-    # Load dataset
-    actions = evaluator.load_dataset()
+    # Load dataset once (convert to list since we need to iterate twice if resolving system_prompt)
+    actions = list(evaluator.load_dataset())
+
+    # Resolve system_prompt from environment if not provided via CLI
+    resolved_system_prompt = env_config.system_prompt
+    if resolved_system_prompt is None and actions:
+        # Use first action from dataset to create environment and get system_prompt
+        async def get_env_system_prompt():
+            env = await env_factory(actions[0])
+            prompt = env.system_prompt
+            await env.cleanup()
+            return prompt
+
+        resolved_system_prompt = asyncio.run(get_env_system_prompt())
+
+    # Save config for reproducibility
+    config_data = {
+        "benchmark": benchmark_name,
+        "env_path": str(env_path),
+        "model": model_config.to_dict(),
+        "env": {
+            "system_prompt": resolved_system_prompt,
+            "max_tool_iterations": env_config.max_tool_iterations,
+        },
+        "eval": eval_config.to_dict(),
+    }
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2)
+    click.echo(f"Saved config to {config_path}")
 
     # Run evaluation
     click.echo(f"Running {benchmark_name} evaluation with {env_path}")
