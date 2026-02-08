@@ -8,10 +8,9 @@ The hook file must export `EvaluatorClass` (an Evaluator subclass).
 """
 
 from collections.abc import Iterable
-from functools import partial
 
 from strands_env.core import Action, TaskContext
-from strands_env.eval import Evaluator, compute_pass_at_k
+from strands_env.eval import Evaluator
 
 
 class SimpleMathEvaluator(Evaluator):
@@ -49,14 +48,7 @@ class SimpleMathEvaluator(Evaluator):
 
         Default computes pass@k for k=1..n_samples_per_prompt.
         """
-        return [
-            partial(
-                compute_pass_at_k,
-                k_values=[1, 2, 4, 8],  # Custom k values
-                reward_threshold=1.0,
-            ),
-            self.compute_average_reward,
-        ]
+        return super().get_metric_fns() + [self.compute_average_reward]
 
     def compute_average_reward(self, results: dict) -> dict:
         """Example custom metric: average reward across all samples."""
