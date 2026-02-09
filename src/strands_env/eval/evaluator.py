@@ -137,22 +137,24 @@ class Evaluator:
     async def evaluate_sample(self, action: Action) -> EvalSample:
         """Evaluate a single sample."""
         env = await self.env_factory(action)
-        await env.reset()
-        step_result = await env.step(action)
-        if not self.keep_tokens:
-            step_result.observation.tokens = None
-        await env.cleanup()
-        # Runtime logging for debugging
-        reward_str = f"{step_result.reward.reward:.2f}" if step_result.reward else "N/A"
-        reward_info = step_result.reward.info if step_result.reward else {}
-        logger.info(
-            f"[{action.task_context.id}]: "
-            f"reward={reward_str} | "
-            f"label={action.task_context.ground_truth} | "
-            f"reward_info={reward_info} | "
-            f"metrics={step_result.observation.metrics}"
-        )
-        return EvalSample(action=action, step_result=step_result)
+        try:
+            await env.reset()
+            step_result = await env.step(action)
+            if not self.keep_tokens:
+                step_result.observation.tokens = None
+            # Runtime logging for debugging
+            reward_str = f"{step_result.reward.reward:.2f}" if step_result.reward else "N/A"
+            reward_info = step_result.reward.info if step_result.reward else {}
+            logger.info(
+                f"[{action.task_context.id}]: "
+                f"reward={reward_str} | "
+                f"label={action.task_context.ground_truth} | "
+                f"reward_info={reward_info} | "
+                f"metrics={step_result.observation.metrics}"
+            )
+            return EvalSample(action=action, step_result=step_result)
+        finally:
+            await env.cleanup()
 
     async def run(self, actions: Iterable[Action]) -> dict[str, list[EvalSample]]:
         """Run evaluation on actions with n_samples_per_prompt each.
