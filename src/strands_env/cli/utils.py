@@ -84,7 +84,7 @@ def build_model_factory(config: ModelConfig, max_concurrency: int) -> ModelFacto
             session = get_assumed_role_session(config.role_arn, config.region)
         else:
             session = get_boto3_session(config.region, config.profile_name)
-        return bedrock_model_factory(session, config.model_id, sampling)
+        return bedrock_model_factory(boto_session=session, model_id=config.model_id, sampling_params=sampling)
 
     else:
         raise click.ClickException(f"Unknown backend: {config.backend}")
