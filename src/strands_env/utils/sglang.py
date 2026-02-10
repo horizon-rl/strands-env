@@ -19,6 +19,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
+import httpx
 from strands_sglang import SGLangClient
 
 if TYPE_CHECKING:
@@ -68,3 +69,35 @@ def clear_clients() -> None:
 def clear_tokenizers() -> None:
     """Clear all cached tokenizer instances."""
     get_cached_tokenizer.cache_clear()
+
+
+def check_server_health(base_url: str, timeout: float = 5.0) -> None:
+    """Check if the SGLang server is reachable.
+
+    Args:
+        base_url: Base URL of the SGLang server.
+        timeout: Request timeout in seconds.
+
+    Raises:
+        ConnectionError: If the server is not reachable or unhealthy.
+    """
+    try:
+        response = httpx.get(f"{base_url}/health", timeout=timeout)
+        response.raise_for_status()
+    except httpx.HTTPError as e:
+        raise ConnectionError(f"SGLang server at {base_url} is not reachable: {e}") from e
+
+
+def get_model_id(base_url: str, timeout: float = 5.0) -> str:
+    """Get the model ID from the SGLang server.
+
+    Args:
+        base_url: Base URL of the SGLang server.
+        timeout: Request timeout in seconds.
+
+    Returns:
+        The model path/ID from the server.
+    """
+    response = httpx.get(f"{base_url}/get_model_info", timeout=timeout)
+    response.raise_for_status()
+    return response.json()["model_path"]

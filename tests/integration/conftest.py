@@ -9,13 +9,12 @@ Configuration (priority: CLI > env var > default):
     SGLANG_BASE_URL=http://... pytest tests/integration/
 """
 
-import asyncio
-
 import pytest
 from strands_sglang import SGLangClient
 from transformers import AutoTokenizer
 
 from strands_env.core.models import DEFAULT_SAMPLING_PARAMS, sglang_model_factory
+from strands_env.utils.sglang import check_server_health, get_model_id
 
 # Mark all tests in this directory as integration tests
 pytestmark = pytest.mark.integration
@@ -30,19 +29,17 @@ def sglang_base_url(request):
 @pytest.fixture(scope="session")
 def sglang_client(sglang_base_url):
     """Shared SGLang client for connection pooling. Skips all tests if server is unreachable."""
-    client = SGLangClient(sglang_base_url)
     try:
-        if not asyncio.run(client.health()):
-            pytest.skip(f"SGLang server at {sglang_base_url} is not healthy")
-    except Exception:
+        check_server_health(sglang_base_url)
+    except ConnectionError:
         pytest.skip(f"SGLang server not reachable at {sglang_base_url}")
-    return client
+    return SGLangClient(sglang_base_url)
 
 
 @pytest.fixture(scope="session")
-def sglang_model_id(sglang_client):
+def sglang_model_id(sglang_base_url):
     """Auto-detect model ID from the running SGLang server."""
-    return asyncio.run(sglang_client.get_model_info())["model_path"]
+    return get_model_id(sglang_base_url)
 
 
 @pytest.fixture(scope="session")
