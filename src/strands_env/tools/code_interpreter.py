@@ -33,9 +33,9 @@ class CodeInterpreterToolkit:
     and shell commands in a sandboxed environment.
 
     Example:
-        from strands_env.utils import get_boto3_session
+        from strands_env.utils.aws import get_session
 
-        session = get_boto3_session(region="us-east-1")
+        session = get_session(region="us-east-1")
         toolkit = CodeInterpreterToolkit(boto3_session=session)
 
         # In environment:

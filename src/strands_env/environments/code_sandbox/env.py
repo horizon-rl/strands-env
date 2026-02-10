@@ -24,7 +24,7 @@ from typing_extensions import override
 
 from strands_env.core.environment import Environment
 from strands_env.tools import CodeInterpreterToolkit
-from strands_env.utils.aws import get_boto3_session
+from strands_env.utils.aws import get_session
 
 if TYPE_CHECKING:
     import boto3
@@ -53,9 +53,9 @@ class CodeSandboxEnv(Environment):
 
     Example:
         from strands_env.environments.code_sandbox import CodeSandboxEnv, CodeMode
-        from strands_env.utils import get_boto3_session
+        from strands_env.utils.aws import get_session
 
-        session = get_boto3_session(region="us-east-1")
+        session = get_session(region="us-east-1")
         env = CodeSandboxEnv(
             boto3_session=session,
             model_factory=model_factory,
@@ -99,7 +99,7 @@ class CodeSandboxEnv(Environment):
         )
         self.mode = mode
         self._toolkit = CodeInterpreterToolkit(
-            boto3_session=boto3_session or get_boto3_session(), session_name="strands-env-code-sandbox"
+            boto3_session=boto3_session or get_session(), session_name="strands-env-code-sandbox"
         )
 
     @override

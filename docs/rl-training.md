@@ -17,12 +17,11 @@ Customize the `generate` and `reward_func` methods to replace single generation 
 ```python
 from strands_env.core import Action, TaskContext
 from strands_env.core.models import sglang_model_factory
-from strands_env.utils import get_cached_client_from_slime_args
+from strands_env.utils.sglang import get_cached_client_from_slime_args
 
 async def generate(args, sample, sampling_params):
     # Build model factory with cached client
     factory = sglang_model_factory(
-        model_id=args.hf_checkpoint,
         tokenizer=tokenizer,
         client=get_cached_client_from_slime_args(args),
         sampling_params=sampling_params,

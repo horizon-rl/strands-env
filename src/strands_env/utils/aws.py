@@ -25,48 +25,40 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=None)
-def get_boto3_session(region: str = "us-east-1", profile_name: str | None = None) -> boto3.Session:
+def get_session(
+    region: str = "us-east-1",
+    profile_name: str | None = None,
+    role_arn: str | None = None,
+    session_name: str = "StrandsEnvSession",
+) -> boto3.Session:
     """Get a cached boto3 session.
 
     Credentials are managed by boto3's provider chain (env vars, ~/.aws/credentials,
     IAM instance role, etc.) and auto-refresh automatically.
 
-    For role assumption, either:
-    1. Configure a profile in ~/.aws/config with `role_arn` and `source_profile`, or
-    2. Use `get_assumed_role_session()` for programmatic role assumption
+    If `role_arn` is provided, assumes the role using STS with auto-refreshing
+    credentials via botocore's `RefreshableCredentials`.
 
     Args:
         region: AWS region name.
         profile_name: Optional AWS profile name from ~/.aws/config.
+        role_arn: Optional ARN of the IAM role to assume.
+        session_name: Session name for assumed role (only used if role_arn provided).
 
     Returns:
         Cached boto3 Session instance.
     """
-    logger.info(f"Creating boto3 session: region={region}, profile={profile_name}")
-    return boto3.Session(region_name=region, profile_name=profile_name)
+    if role_arn:
+        return _create_assumed_role_session(role_arn, region, session_name)
+    else:
+        logger.info(f"Creating boto3 session: region={region}, profile={profile_name}")
+        return boto3.Session(region_name=region, profile_name=profile_name)
 
 
-@lru_cache(maxsize=None)
-def get_assumed_role_session(
-    role_arn: str,
-    region: str = "us-east-1",
-    session_name: str = "StrandsEnvSession",
-) -> boto3.Session:
-    """Get a cached boto3 session with assumed role credentials.
-
-    Uses botocore's `RefreshableCredentials` so credentials auto-refresh when expired.
-    The session is cached by (role_arn, region, session_name).
-
-    Args:
-        role_arn: ARN of the IAM role to assume.
-        region: AWS region name.
-        session_name: Session name for the assumed role.
-
-    Returns:
-        Cached boto3 Session with auto-refreshing credentials.
-    """
+def _create_assumed_role_session(role_arn: str, region: str, session_name: str) -> boto3.Session:
+    """Create a boto3 session with assumed role credentials."""
     from botocore.credentials import RefreshableCredentials
-    from botocore.session import get_session
+    from botocore.session import get_session as get_botocore_session
 
     logger.info(f"Creating boto3 session with assumed role: role={role_arn}, region={region}")
 
@@ -87,12 +79,11 @@ def get_assumed_role_session(
         method="sts-assume-role",
     )
 
-    botocore_session = get_session()
+    botocore_session = get_botocore_session()
     botocore_session._credentials = session_credentials
     return boto3.Session(botocore_session=botocore_session, region_name=region)
 
 
-def clear_sessions() -> None:
+def clear_session_cache() -> None:
     """Clear all cached boto3 sessions."""
-    get_boto3_session.cache_clear()
-    get_assumed_role_session.cache_clear()
+    get_session.cache_clear()

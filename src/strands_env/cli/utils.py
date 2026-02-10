@@ -273,14 +273,15 @@ def _build_sglang_model_factory(config: ModelConfig, max_concurrency: int, sampl
 
 def _build_bedrock_model_factory(config: ModelConfig, sampling: dict) -> ModelFactory:
     """Build Bedrock model factory."""
-    from strands_env.utils.aws import get_assumed_role_session, get_boto3_session
+    from strands_env.utils.aws import get_session
 
     if not config.model_id:
         raise click.ClickException("--model-id is required for Bedrock backend")
 
-    if config.role_arn:
-        boto_session = get_assumed_role_session(config.role_arn, config.region)
-    else:
-        boto_session = get_boto3_session(config.region, config.profile_name)
+    boto_session = get_session(
+        region=config.region,
+        profile_name=config.profile_name,
+        role_arn=config.role_arn,
+    )
 
     return bedrock_model_factory(model_id=config.model_id, boto_session=boto_session, sampling_params=sampling)
