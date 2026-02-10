@@ -247,7 +247,8 @@ Override `get_metric_fns()` to customize metrics:
 ```python
 from functools import partial
 
-from strands_env.eval import Evaluator, compute_pass_at_k
+from strands_env.eval import Evaluator
+from strands_env.eval.metrics import compute_pass_at_k
 
 class MyEvaluator(Evaluator):
     benchmark_name = "my-benchmark"

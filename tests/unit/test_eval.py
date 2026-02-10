@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from strands_env.core import Action, Environment, Observation, RewardResult, StepResult, TaskContext
-from strands_env.eval import AIME2024Evaluator, EvalSample, Evaluator
+from strands_env.eval import EvalSample, Evaluator
+from strands_env.eval.aime import AIME2024Evaluator
 from strands_env.eval.metrics import compute_pass_at_k
 
 # ---------------------------------------------------------------------------
