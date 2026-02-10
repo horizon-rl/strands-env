@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from strands import tool
@@ -65,18 +66,26 @@ class CodeInterpreterToolkit:
         self.session_name = session_name
         self._client = boto3_session.client("bedrock-agentcore", region_name=self.region)
         self._session_id: str | None = None
+        # Adding a session lock here to make sure each CodeInterpreterToolkit only owns one session.
+        self._session_lock = asyncio.Lock()
         self._execute_code = self._create_execute_code_tool()
         self._execute_command = self._create_execute_command_tool()
 
-    def _get_session_id(self) -> str:
-        """Get or create a code interpreter session."""
+    async def _get_session_id(self) -> str:
+        """Get or create a code interpreter session (async, thread-safe)."""
         if self._session_id is None:
-            response = self._client.start_code_interpreter_session(
-                codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-                name=self.session_name,
-                sessionTimeoutSeconds=3600,
-            )
-            self._session_id = response["sessionId"]
+            async with self._session_lock:
+                # Double-check after acquiring lock
+                if self._session_id is not None:
+                    return self._session_id
+
+                response = await asyncio.to_thread(
+                    self._client.start_code_interpreter_session,
+                    codeInterpreterIdentifier=CODE_INTERPRETER_ID,
+                    name=self.session_name,
+                    sessionTimeoutSeconds=3600,
+                )
+                self._session_id = response["sessionId"]
         return self._session_id
 
     def _parse_stream_response(self, response: dict[str, Any]) -> str:
@@ -124,9 +133,11 @@ class CodeInterpreterToolkit:
     def _create_execute_code_tool(self):
         """Create execute_code tool."""
         client = self._client
+        get_session_id = self._get_session_id
+        parse_fn = self._parse_stream_response
 
         @tool
-        def execute_code(code: str) -> str:
+        async def execute_code(code: str) -> str:
             """Execute Python code and return the result.
 
             Args:
@@ -135,22 +146,27 @@ class CodeInterpreterToolkit:
             Returns:
                 Execution output text or error message.
             """
-            response = client.invoke_code_interpreter(
+            session_id = await get_session_id()
+            response = await asyncio.to_thread(
+                client.invoke_code_interpreter,
                 codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-                sessionId=self._get_session_id(),
+                sessionId=session_id,
                 name="executeCode",
                 arguments={"code": code, "language": "python"},
             )
-            return self._parse_stream_response(response)
+
+            return parse_fn(response)
 
         return execute_code
 
     def _create_execute_command_tool(self):
         """Create execute_command tool."""
         client = self._client
+        get_session_id = self._get_session_id
+        parse_fn = self._parse_stream_response
 
         @tool
-        def execute_command(command: str) -> str:
+        async def execute_command(command: str) -> str:
             """Execute a shell command and return the result.
 
             Args:
@@ -159,13 +175,15 @@ class CodeInterpreterToolkit:
             Returns:
                 Execution output text or error message.
             """
-            response = client.invoke_code_interpreter(
+            session_id = await get_session_id()
+            response = await asyncio.to_thread(
+                client.invoke_code_interpreter,
                 codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-                sessionId=self._get_session_id(),
+                sessionId=session_id,
                 name="executeCommand",
                 arguments={"command": command},
             )
-            return self._parse_stream_response(response)
+            return parse_fn(response)
 
         return execute_command
 
