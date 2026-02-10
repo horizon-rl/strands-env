@@ -23,7 +23,7 @@ from .eval import eval_group
 
 @click.group()
 def cli():
-    """strands-env: RL environment abstraction for Strands agents."""
+    """strands-env: cli main entrypoint."""
     pass
 
 
