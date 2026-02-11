@@ -1,0 +1,5 @@
+"""Terminal-Bench 2.0 Evaluation Requirements: 
+Harbor for Docker management and task handling
+"""
+
+harbor==0.1.43
