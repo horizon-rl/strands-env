@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 
 class CodeMode(str, Enum):
-    """Tool modes for CodeSandboxEnv."""
+    """Tool modes for `CodeSandboxEnv`."""
 
     CODE = "code"
     """Only `execute_code` tool (Python execution)."""

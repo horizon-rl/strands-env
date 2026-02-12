@@ -58,7 +58,7 @@ class TerminalBenchConfig:
 
 
 class TerminalBenchEnv(Environment):
-    """Docker-based environment for terminal-bench tasks."""
+    """Terminal-Bench environment using Harbor's DockerEnvironment for container management and test execution."""
 
     default_system_prompt_path = Path(__file__).parent / "system_prompt.md"
 
@@ -123,10 +123,12 @@ class TerminalBenchEnv(Environment):
 
     @override
     def get_tools(self) -> list:
+        """Return the execute_command tool."""
         return [self.execute_command]
 
     @override
     async def cleanup(self) -> None:
+        """Stop and delete the Docker environment."""
         if self.docker_env:
             await self.docker_env.stop(delete=True)
             self.docker_env = None
