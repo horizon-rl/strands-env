@@ -79,6 +79,7 @@ class TestTokenObservation:
         assert obs.token_ids == [1, 2, 3, 4, 5]
         assert obs.prompt_length == 3
         assert obs.rollout_token_ids == [4, 5]
+        assert obs.routed_experts is None
 
     def test_from_token_manager_uses_initial_prompt(self):
         """Verify prompt_length is derived from the first segment."""
@@ -90,6 +91,27 @@ class TestTokenObservation:
         obs = TokenObservation.from_token_manager(tm)
         assert obs.prompt_length == 2
         assert obs.initial_prompt_token_ids == [10, 20]
+
+    def test_from_token_manager_with_routed_experts(self):
+        """Verify routed_experts is extracted from TokenManager."""
+        import base64
+        import struct
+
+        tm = TokenManager()
+        tm.add_prompt([1, 2])
+        tm.add_response([3, 4])
+
+        # Simulate routing data: 4 tokens, 1 layer, top_k=1 → 4 int32 values
+        experts = struct.pack("<4i", 0, 1, 2, 3)
+        tm.add_routed_experts(base64.b64encode(experts).decode("ascii"))
+
+        obs = TokenObservation.from_token_manager(tm)
+        assert obs is not None
+        assert obs.routed_experts is not None
+
+        # Round-trip: decode and verify
+        decoded = base64.b64decode(obs.routed_experts)
+        assert struct.unpack("<4i", decoded) == (0, 1, 2, 3)
 
 
 # ---------------------------------------------------------------------------

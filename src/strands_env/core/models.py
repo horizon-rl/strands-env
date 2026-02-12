@@ -70,6 +70,7 @@ def sglang_model_factory(
     sampling_params: dict[str, Any] = DEFAULT_SAMPLING_PARAMS,
     return_logprob: bool = True,
     enable_thinking: bool | None = None,
+    return_routed_experts: bool = False,
 ) -> ModelFactory:
     """Return a factory that creates `SGLangModel` instances.
 
@@ -80,6 +81,7 @@ def sglang_model_factory(
         sampling_params: Sampling parameters for the model (e.g. `{"max_new_tokens": 4096}`).
         return_logprob: Whether to return logprobs for each token.
         enable_thinking: Enable thinking mode for Qwen3 hybrid models.
+        return_routed_experts: Record MoE routing decisions for routing replay.
     """
     if tool_parser is None:
         tool_parser = HermesToolParser()
@@ -91,6 +93,7 @@ def sglang_model_factory(
         sampling_params=sampling_params,
         return_logprob=return_logprob,
         enable_thinking=enable_thinking,
+        return_routed_experts=return_routed_experts,
     )
 
 

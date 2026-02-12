@@ -64,12 +64,14 @@ class TokenObservation(BaseModel):
 
     `prompt_length` splits the flat `token_ids` list into initial-prompt vs. rollout.
     `loss_mask` and `logprobs` cover all tokens (use rollout slices for training).
+    `routed_experts` holds base64-encoded MoE routing decisions for routing replay.
     """
 
     token_ids: list[int] = Field(default_factory=list)
     prompt_length: int = Field(default=0)
     loss_mask: list[int] = Field(default_factory=list)
     logprobs: list[float | None] = Field(default_factory=list)
+    routed_experts: str | None = Field(default=None)
 
     @property
     def rollout_token_ids(self) -> list[int]:
@@ -97,6 +99,7 @@ class TokenObservation(BaseModel):
             prompt_length=len(token_manager.initial_prompt),
             loss_mask=token_manager.loss_mask,
             logprobs=token_manager.logprobs,
+            routed_experts=token_manager.routed_experts,
         )
 
 

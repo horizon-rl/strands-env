@@ -47,6 +47,24 @@ class TestSGLangModelFactory:
         model2 = factory()
         assert model1 is not model2
 
+    def test_return_routed_experts_passed_through(self):
+        factory = sglang_model_factory(
+            tokenizer=MagicMock(),
+            client=MagicMock(spec=SGLangClient),
+            return_routed_experts=True,
+        )
+        model = factory()
+        assert isinstance(model, SGLangModel)
+        assert model.get_config()["return_routed_experts"] is True
+
+    def test_return_routed_experts_default_false(self):
+        factory = sglang_model_factory(
+            tokenizer=MagicMock(),
+            client=MagicMock(spec=SGLangClient),
+        )
+        model = factory()
+        assert model.get_config().get("return_routed_experts", False) is False
+
 
 # ---------------------------------------------------------------------------
 # bedrock_model_factory

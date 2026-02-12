@@ -268,6 +268,7 @@ def _build_sglang_model_factory(config: ModelConfig, max_concurrency: int, sampl
         tokenizer=tokenizer,
         tool_parser=tool_parser,
         sampling_params=sampling,
+        return_routed_experts=config.return_routed_experts,
     )
 
 

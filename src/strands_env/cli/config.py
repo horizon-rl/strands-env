@@ -62,6 +62,9 @@ class ModelConfig:
     # Sampling
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
 
+    # SGLang TITO options
+    return_routed_experts: bool = False  # Record MoE routing decisions for routing replay
+
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
         return {
@@ -74,6 +77,7 @@ class ModelConfig:
             "profile_name": self.profile_name,
             "role_arn": self.role_arn,
             "sampling": self.sampling.to_dict(),
+            "return_routed_experts": self.return_routed_experts,
         }
 
 
