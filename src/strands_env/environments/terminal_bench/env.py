@@ -40,31 +40,21 @@ if TYPE_CHECKING:
 
 @dataclass
 class TerminalBenchConfig:
-    """Configuration for task-dependent arguments in TerminalBenchEnv.
+    """Configuration for task-dependent arguments in `TerminalBenchEnv`.
 
     Attributes:
         task_id: Unique identifier for the task.
         task_dir: Path to task directory containing Dockerfile, tests/, environment/.
-        trial_path: Path to trial output directory for storing results.
+        trial_dir: Path to trial output directory for storing results.
         env_config: Harbor EnvironmentConfig for Docker setup.
-        test_timeout_sec: Timeout in seconds for test execution.
+        timeout_s: Timeout in seconds for test execution.
     """
 
     task_id: str
     task_dir: Path
-    trial_path: Path
+    trial_dir: Path
     env_config: EnvironmentConfig = field(default_factory=EnvironmentConfig)
-    test_timeout_sec: int = 1200
-
-    def to_dict(self) -> dict:
-        """Convert to dict for serialization."""
-        return {
-            "task_id": self.task_id,
-            "task_dir": str(self.task_dir),
-            "trial_path": str(self.trial_path),
-            "env_config": self.env_config.model_dump() if self.env_config else None,
-            "test_timeout_sec": self.test_timeout_sec,
-        }
+    timeout_s: int = 1200
 
 
 class TerminalBenchEnv(Environment):
@@ -92,7 +82,7 @@ class TerminalBenchEnv(Environment):
 
         self.config = config
         self.task_paths = TaskPaths(config.task_dir)
-        self.trial_paths = TrialPaths(trial_dir=config.trial_path)
+        self.trial_paths = TrialPaths(trial_dir=config.trial_dir)
         self.docker_env: BaseEnvironment | None = None
         self.reward_fn = reward_fn or TerminalBenchRewardFunction(self)
 
@@ -123,7 +113,7 @@ class TerminalBenchEnv(Environment):
         """
         if not self.docker_env:
             raise RuntimeError("Docker environment not initialized")
-        result = await self.docker_env.exec(command, timeout_sec=self.config.test_timeout_sec)
+        result = await self.docker_env.exec(command, timeout_sec=self.config.timeout_s)
         output = result.stdout or ""
         if result.stderr:
             output += f"\n[stderr]: {result.stderr}"
