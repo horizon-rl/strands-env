@@ -24,7 +24,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from strands.types.content import Message, Messages
-from strands.types.exceptions import EventLoopException, MaxTokensReachedException
+from strands.types.exceptions import ContextWindowOverflowException, EventLoopException, MaxTokensReachedException
 from strands_sglang import MaxToolIterationsReachedError, TokenManager
 
 logger = logging.getLogger(__name__)
@@ -154,6 +154,7 @@ class TerminationReason(str, Enum):
     TASK_COMPLETE = "task_complete"
     MAX_TOOL_ITERATIONS_REACHED = "max_tool_iterations_reached"
     MAX_TOKENS_REACHED = "max_tokens_reached"
+    CONTEXT_WINDOW_OVERFLOW = "context_window_overflow"
     TIMEOUT = "timeout"
     AGENT_ERROR = "agent_error"  # Any other exception not covered by other reasons
 
@@ -183,6 +184,8 @@ class TerminationReason(str, Enum):
                 reason = cls.MAX_TOOL_ITERATIONS_REACHED
             case MaxTokensReachedException():
                 reason = cls.MAX_TOKENS_REACHED
+            case ContextWindowOverflowException():
+                reason = cls.CONTEXT_WINDOW_OVERFLOW
             case e if cls._is_timeout(e):
                 reason = cls.TIMEOUT
             case _:
