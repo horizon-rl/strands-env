@@ -124,9 +124,22 @@ class Environment:
         tool_parse_errors: dict[str, int] | None = None,
     ) -> dict[str, Any]:
         """Extract metrics from the event loop. Override to add custom metrics."""
-        usage = event_loop_metrics.accumulated_usage
-        metrics_data = event_loop_metrics.accumulated_metrics
-        latency_ms = metrics_data.get("latencyMs")
+
+        def _summarize(counts: tuple | list, round_digits: int = 1) -> dict[str, int | float]:
+            return {
+                "total": round(sum(counts), round_digits),
+                "max": round(max(counts), round_digits),
+                "mean": round(sum(counts) / len(counts), round_digits),
+                "min": round(min(counts), round_digits),
+            }
+
+        per_model_call_usage = [
+            (cycle.usage.get("inputTokens", 0), cycle.usage.get("outputTokens", 0))
+            for invocation in event_loop_metrics.agent_invocations
+            for cycle in invocation.cycles
+        ]
+        input_counts, output_counts = zip(*per_model_call_usage) if per_model_call_usage else ([], [])
+        cycle_durations = event_loop_metrics.cycle_durations
 
         per_tool_metrics = {
             name: {
@@ -141,9 +154,8 @@ class Environment:
 
         return {
             "model_calls": event_loop_metrics.cycle_count,
-            "model_latency_s": round(latency_ms / 1000.0, 4) if latency_ms is not None else None,
-            "input_tokens": usage.get("inputTokens"),
-            "output_tokens": usage.get("outputTokens"),
-            "total_tokens": usage.get("totalTokens"),
+            "model_latency_s": _summarize(cycle_durations, round_digits=4) if cycle_durations else None,
+            "input_tokens": _summarize(input_counts) if input_counts else None,
+            "output_tokens": _summarize(output_counts) if output_counts else None,
             "per_tool_metrics": per_tool_metrics or None,
         }
