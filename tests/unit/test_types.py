@@ -1,7 +1,7 @@
 """Unit tests for core types."""
 
 from strands.types.exceptions import EventLoopException, MaxTokensReachedException
-from strands_sglang import MaxToolIterationsReachedError, TokenManager
+from strands_sglang import MaxToolCallsReachedError, MaxToolIterationsReachedError, TokenManager
 
 from strands_env.core.types import (
     Action,
@@ -142,6 +142,11 @@ class TestTerminationReason:
         error = EventLoopException(Exception())
         error.__cause__ = MaxToolIterationsReachedError(10)
         assert TerminationReason.from_error(error) == TerminationReason.MAX_TOOL_ITERATIONS_REACHED
+
+    def test_max_tool_calls(self):
+        error = EventLoopException(Exception())
+        error.__cause__ = MaxToolCallsReachedError(5)
+        assert TerminationReason.from_error(error) == TerminationReason.MAX_TOOL_CALLS_REACHED
 
     def test_max_tokens(self):
         error = EventLoopException(Exception())

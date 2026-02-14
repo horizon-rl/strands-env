@@ -25,7 +25,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from strands.types.content import Message, Messages
 from strands.types.exceptions import ContextWindowOverflowException, EventLoopException, MaxTokensReachedException
-from strands_sglang import MaxToolIterationsReachedError, TokenManager
+from strands_sglang import MaxToolCallsReachedError, MaxToolIterationsReachedError, TokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +152,10 @@ class TerminationReason(str, Enum):
 
     NOT_TERMINATED = "not_terminated"
     TASK_COMPLETE = "task_complete"
-    MAX_TOOL_ITERATIONS_REACHED = "max_tool_iterations_reached"
     MAX_TOKENS_REACHED = "max_tokens_reached"
     CONTEXT_WINDOW_OVERFLOW = "context_window_overflow"
+    MAX_TOOL_ITERATIONS_REACHED = "max_tool_iterations_reached"
+    MAX_TOOL_CALLS_REACHED = "max_tool_calls_reached"
     TIMEOUT = "timeout"
     AGENT_ERROR = "agent_error"  # Any other exception not covered by other reasons
 
@@ -180,12 +181,14 @@ class TerminationReason(str, Enum):
         cause = error.__cause__ if isinstance(error, EventLoopException) else error
 
         match cause:
-            case MaxToolIterationsReachedError():
-                reason = cls.MAX_TOOL_ITERATIONS_REACHED
             case MaxTokensReachedException():
                 reason = cls.MAX_TOKENS_REACHED
             case ContextWindowOverflowException():
                 reason = cls.CONTEXT_WINDOW_OVERFLOW
+            case MaxToolIterationsReachedError():
+                reason = cls.MAX_TOOL_ITERATIONS_REACHED
+            case MaxToolCallsReachedError():
+                reason = cls.MAX_TOOL_CALLS_REACHED
             case e if cls._is_timeout(e):
                 reason = cls.TIMEOUT
             case _:

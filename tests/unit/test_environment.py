@@ -163,10 +163,15 @@ class TestStep:
 
     @staticmethod
     def _mock_event_loop_metrics():
+        cycle = MagicMock()
+        cycle.usage = {"inputTokens": 10, "outputTokens": 5}
+        invocation = MagicMock()
+        invocation.cycles = [cycle]
+
         metrics = MagicMock()
         metrics.cycle_count = 1
-        metrics.accumulated_usage = {"inputTokens": 10, "outputTokens": 5, "totalTokens": 15}
-        metrics.accumulated_metrics = {"latencyMs": 100}
+        metrics.agent_invocations = [invocation]
+        metrics.cycle_durations = [0.1]
         metrics.tool_metrics = {}
         return metrics
 
@@ -177,20 +182,29 @@ class TestStep:
 
 
 class TestComputeMetrics:
+    @staticmethod
+    def _make_cycle(input_tokens, output_tokens):
+        cycle = MagicMock()
+        cycle.usage = {"inputTokens": input_tokens, "outputTokens": output_tokens}
+        return cycle
+
     def test_basic_metrics(self, env):
+        cycles = [self._make_cycle(30, 15), self._make_cycle(35, 20), self._make_cycle(35, 15)]
+        invocation = MagicMock()
+        invocation.cycles = cycles
+
         event_loop_metrics = MagicMock()
         event_loop_metrics.cycle_count = 3
-        event_loop_metrics.accumulated_usage = {"inputTokens": 100, "outputTokens": 50, "totalTokens": 150}
-        event_loop_metrics.accumulated_metrics = {"latencyMs": 2500}
+        event_loop_metrics.agent_invocations = [invocation]
+        event_loop_metrics.cycle_durations = [0.8, 0.9, 0.8]
         event_loop_metrics.tool_metrics = {}
 
         result = env.compute_metrics(event_loop_metrics)
 
         assert result["model_calls"] == 3
-        assert result["model_latency_s"] == 2.5
-        assert result["input_tokens"] == 100
-        assert result["output_tokens"] == 50
-        assert result["total_tokens"] == 150
+        assert result["input_tokens"]["total"] == 100
+        assert result["output_tokens"]["total"] == 50
+        assert result["model_latency_s"]["total"] == 2.5
         assert result["per_tool_metrics"] is None
 
     def test_with_tool_metrics(self, env):
@@ -200,10 +214,13 @@ class TestComputeMetrics:
         tool_metric.error_count = 1
         tool_metric.total_time = 1.2345
 
+        invocation = MagicMock()
+        invocation.cycles = [self._make_cycle(10, 5)]
+
         event_loop_metrics = MagicMock()
         event_loop_metrics.cycle_count = 2
-        event_loop_metrics.accumulated_usage = {}
-        event_loop_metrics.accumulated_metrics = {}
+        event_loop_metrics.agent_invocations = [invocation]
+        event_loop_metrics.cycle_durations = [0.5]
         event_loop_metrics.tool_metrics = {"calculator": tool_metric}
 
         result = env.compute_metrics(event_loop_metrics, tool_parse_errors={"calculator": 2})
@@ -217,21 +234,21 @@ class TestComputeMetrics:
     def test_zero_values_preserved(self, env):
         event_loop_metrics = MagicMock()
         event_loop_metrics.cycle_count = 0
-        event_loop_metrics.accumulated_usage = {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}
-        event_loop_metrics.accumulated_metrics = {"latencyMs": 0}
+        event_loop_metrics.agent_invocations = []
+        event_loop_metrics.cycle_durations = []
         event_loop_metrics.tool_metrics = {}
 
         result = env.compute_metrics(event_loop_metrics)
 
         assert result["model_calls"] == 0
-        assert result["input_tokens"] == 0
-        assert result["model_latency_s"] == 0.0
+        assert result["input_tokens"] is None
+        assert result["model_latency_s"] is None
 
     def test_missing_latency(self, env):
         event_loop_metrics = MagicMock()
         event_loop_metrics.cycle_count = 1
-        event_loop_metrics.accumulated_usage = {}
-        event_loop_metrics.accumulated_metrics = {}
+        event_loop_metrics.agent_invocations = []
+        event_loop_metrics.cycle_durations = []
         event_loop_metrics.tool_metrics = {}
 
         result = env.compute_metrics(event_loop_metrics)

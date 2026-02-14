@@ -74,27 +74,18 @@ class CodeSandboxEnv(Environment):
         model_factory: ModelFactory,
         system_prompt: str | None = None,
         reward_fn: RewardFunction | None = None,
-        max_tool_iterations: int = 10,
+        max_tool_iterations: int | None = 10,
+        max_tool_calls: int | None = 50,
         verbose: bool = False,
         boto3_session: boto3.Session | None = None,
         mode: CodeMode = CodeMode.CODE,
     ):
-        """Initialize the code sandbox environment.
-
-        Args:
-            boto3_session: boto3 session for AWS credentials.
-            model_factory: Factory function that creates a fresh Model per step.
-            system_prompt: Optional system prompt override.
-            reward_fn: Optional reward function to compute rewards.
-            max_tool_iterations: Maximum tool iterations per step.
-            verbose: Whether to print verbose output.
-            mode: Tool mode - CODE, TERMINAL, or CODE_AND_TERMINAL.
-        """
         super().__init__(
             model_factory=model_factory,
             reward_fn=reward_fn,
             system_prompt=system_prompt,
             max_tool_iterations=max_tool_iterations,
+            max_tool_calls=max_tool_calls,
             verbose=verbose,
         )
         self.mode = mode

@@ -24,7 +24,7 @@ from strands import Agent
 from strands.agent.conversation_manager import ConversationManager, NullConversationManager
 from strands.handlers.callback_handler import PrintingCallbackHandler
 from strands.telemetry.metrics import EventLoopMetrics
-from strands_sglang import TokenManager, ToolIterationLimiter
+from strands_sglang import TokenManager, ToolLimiter
 
 from .models import ModelFactory
 from .types import (
@@ -50,12 +50,14 @@ class Environment:
         model_factory: ModelFactory,
         system_prompt: str | None = None,
         reward_fn: RewardFunction | None = None,
-        max_tool_iterations: int = 10,
+        max_tool_iterations: int | None = None,
+        max_tool_calls: int | None = None,
         verbose: bool = False,
     ):
         self.model_factory = model_factory
         self.reward_fn = reward_fn
         self.max_tool_iterations = max_tool_iterations
+        self.max_tool_calls = max_tool_calls
         self.verbose = verbose
 
         path = self.default_system_prompt_path
@@ -68,7 +70,10 @@ class Environment:
     async def step(self, action: Action) -> StepResult:
         """Run one agent episode and return observation + reward + termination."""
         conversation_history = action.task_context.conversation_history
-        tool_limiter = ToolIterationLimiter(self.max_tool_iterations)
+        tool_limiter = ToolLimiter(
+            max_tool_iters=self.max_tool_iterations,
+            max_tool_calls=self.max_tool_calls,
+        )
         model = self.model_factory()
         model.token_manager = TokenManager()
         agent = Agent(
@@ -92,7 +97,8 @@ class Environment:
         tool_parse_errors = getattr(agent.model, "tool_parse_errors", None)
         metrics = {
             "message_count": len(step_messages),
-            "tool_iters": tool_limiter.iteration_count,
+            "tool_iters": tool_limiter.tool_iter_count,
+            "tool_calls": tool_limiter.tool_call_count,
             **self.compute_metrics(agent.event_loop_metrics, tool_parse_errors=tool_parse_errors),
         }
         observation = Observation(messages=step_messages, tokens=token_obs, metrics=metrics)
