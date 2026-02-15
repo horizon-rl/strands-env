@@ -1,3 +1,17 @@
+# Copyright 2025 Horizon RL Contributors
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """SyntheticEvaluator for AWM-format (AgentWorldModel) benchmarks."""
 
 from __future__ import annotations
@@ -19,7 +33,12 @@ logger = logging.getLogger(__name__)
 
 @register_eval("synthetic")
 class SyntheticEvaluator(Evaluator):
-    """Evaluator for AWM-format synthetic agentic environments."""
+    """Evaluator for AWM-format synthetic agentic environments.
+
+    Loads scenarios from an AWM data folder and creates one Action per
+    scenario+task pair. Each action carries ``scenario`` and ``task_idx``
+    in its TaskContext extra fields for env_factory to use.
+    """
 
     benchmark_name: str = "synthetic"
 
@@ -36,6 +55,19 @@ class SyntheticEvaluator(Evaluator):
         save_interval: int = 10,
         keep_tokens: bool = False,
     ):
+        """Initialize the SyntheticEvaluator.
+
+        Args:
+            env_factory: Async factory function that creates a fresh Environment per sample.
+            data_dir: Path to AWM-format data folder containing JSONL files.
+            scenarios: Specific scenario names to evaluate. Defaults to all.
+            max_tasks_per_scenario: Cap on tasks per scenario. Defaults to all.
+            max_concurrency: Maximum concurrent evaluate_sample() calls.
+            n_samples_per_prompt: Number of samples per prompt (for pass@k).
+            output_path: Path to JSONL file for saving results.
+            save_interval: Flush results to disk every N completed samples.
+            keep_tokens: Keep token-level observation in results.
+        """
         super().__init__(
             env_factory=env_factory,
             max_concurrency=max_concurrency,
