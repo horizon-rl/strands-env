@@ -8,7 +8,7 @@ Standardizing environment infrastructure with [Strands Agents](https://github.co
 
 ## Features
 
-This package treats each `env.step()` as a **full agent loop** `(prompt → (tool_call, tool_response+)* → response)`, not a single model call.
+This package treats each `env.step()` as a **full agent loop** `(prompt → (tool_call, tool_response)* → response)`, not a single model call.
 
 - **Define Environments** — Subclass `Environment`, add `@tool` functions, plug in `RewardFunction`
 - **RL Training** — Token-level observations for on-policy training with [strands-sglang](https://github.com/horizon-rl/strands-sglang)
