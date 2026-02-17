@@ -71,6 +71,8 @@ strands-env eval aime-2024 \
     --max-concurrency 30
 ```
 
+> **Tip:** For a non-agentic benchmark (no tool use), simply don't override `get_tools()` in your environment — the base class returns `[]` by default.
+
 ## Documentation
 
 - [Evaluation Guide](docs/evaluation.md) — CLI reference, hook files, custom evaluators
@@ -88,6 +90,8 @@ pytest tests/unit/ -v
 # Integration tests (requires running SGLang server)
 pytest tests/integration/ -v --sglang-base-url=http://localhost:30000
 ```
+
+Or if using Claude Code, just use `/run-unit-tests` and `/run-integration-tests` slash commands.
 
 ## License
 
