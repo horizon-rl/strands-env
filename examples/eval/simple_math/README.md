@@ -1,6 +1,10 @@
 # Simple Math
 
-Simple math benchmark using `CalculatorEnv` with a basic calculator tool.
+Simple math benchmark using `CalculatorEnv` with a basic calculator tool. Useful as a reference for building custom evaluators.
+
+## Setup
+
+No additional setup required beyond `strands-env`.
 
 ## Files
 
@@ -9,12 +13,15 @@ Simple math benchmark using `CalculatorEnv` with a basic calculator tool.
 
 ## Usage
 
-With custom Simple Maths evaluator:
 ```bash
-strands-env eval \
+strands-env eval run \
     --evaluator examples/eval/simple_math/simple_math_evaluator.py \
     --env examples/eval/simple_math/calculator_env.py \
-    --base-url http://localhost:30000
+    --backend sglang \
+    --base-url http://localhost:30000 \
+    --max-tokens 16384 \
+    --n-samples-per-prompt 1 \
+    --max-concurrency 10
 ```
 
-See `strands-env eval --help` for all CLI options.
+See `strands-env eval run --help` for all CLI options.
