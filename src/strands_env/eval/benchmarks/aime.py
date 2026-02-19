@@ -73,3 +73,10 @@ class AIME2025Evaluator(AIMEEvaluator):
 
     benchmark_name = "aime-2025"
     dataset_path = "MathArena/aime_2025"
+
+@register_eval("aime-2026")
+class AIME2026Evaluator(AIMEEvaluator):
+    """AIME 2026 benchmark."""
+
+    benchmark_name = "aime-2026"
+    dataset_path = "MathArena/aime_2026"
