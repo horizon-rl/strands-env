@@ -357,7 +357,7 @@ def run_cmd(
         "eval": eval_config.to_dict(),
     }
     with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=2)
+        json.dump(config_data, f, indent=2, default=str)
     click.echo(f"Saved config to {config_path}")
 
     # Run evaluation
