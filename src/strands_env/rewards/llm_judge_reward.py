@@ -33,10 +33,10 @@ class LLMJudgeReward(RewardFunction):
     """Abstract base for LLM-as-judge reward functions.
 
     Subclasses set `judgment_format` class attribute and implement
-    `judge_template` and `reward_mapper`.
+    `get_judge_prompt` and `get_reward`.
 
     When `judgment_format` is set, uses structured output and passes
-    the parsed Pydantic model to `reward_mapper`. When `None`, passes
+    the parsed Pydantic model to `get_reward`. When `None`, passes
     the raw text response instead.
 
     Args:
@@ -46,24 +46,24 @@ class LLMJudgeReward(RewardFunction):
 
     Example (structured output)::
 
-        class SimpleQAReward(LLMJudgeRewardFunction):
+        class SimpleQAReward(LLMJudgeReward):
             judgment_format = SimpleQAJudgment
 
-            def judge_template(self, action: Action, step_result: StepResult) -> str:
+            async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
                 return f"Question: {action.message}\\nAnswer: {step_result.observation.final_response}"
 
-            def reward_mapper(self, judgment: BaseModel | str) -> float:
+            async def get_reward(self, judgment: BaseModel | str) -> float:
                 return {"correct": 1.0, "incorrect": 0.0, "not_attempted": 0.0}[judgment.grade]
 
     Example (text output)::
 
-        class RegexReward(LLMJudgeRewardFunction):
+        class RegexReward(LLMJudgeReward):
             # judgment_format defaults to None — uses raw text
 
-            def judge_template(self, action: Action, step_result: StepResult) -> str:
+            async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
                 return f"Rate this response 1-10: {step_result.observation.final_response}"
 
-            def reward_mapper(self, judgment: BaseModel | str) -> float:
+            async def get_reward(self, judgment: BaseModel | str) -> float:
                 match = re.search(r"(\\d+)", judgment)
                 return int(match.group(1)) / 10 if match else 0.0
     """
@@ -83,18 +83,18 @@ class LLMJudgeReward(RewardFunction):
         self.default_reward = default_reward
 
     @abstractmethod
-    def judge_template(self, action: Action, step_result: StepResult) -> str:
+    async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
         """Format the prompt for the judge model."""
         ...
 
     @abstractmethod
-    def reward_mapper(self, judgment: BaseModel | str) -> float:
-        """Map judgment (structured or text) to a scalar reward."""
+    async def get_reward(self, judgment: BaseModel | str) -> float:
+        """Get reward from judgment (structured or text)."""
         ...
 
     @override
     async def compute(self, action: Action, step_result: StepResult) -> RewardResult:
-        prompt = self.judge_template(action, step_result)
+        prompt = await self.get_judge_prompt(action, step_result)
         agent = Agent(model=self.judge_model, system_prompt=self.system_prompt, tools=[])
 
         try:
@@ -110,7 +110,7 @@ class LLMJudgeReward(RewardFunction):
             return RewardResult(reward=self.default_reward, info={"reason": "judge_error", "error": str(e)})
 
         try:
-            reward = self.reward_mapper(judgment)
+            reward = await self.get_reward(judgment)
         except Exception as e:
             logger.error(f"Reward mapper failed: {e}")
             info = {"reason": "mapper_error", "error": str(e)}

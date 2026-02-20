@@ -62,7 +62,7 @@ class SimpleQAReward(LLMJudgeReward):
 
     judgment_format = SimpleQAJudgment
 
-    def judge_template(self, action: Action, step_result: StepResult) -> str:
+    async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
         question = action.message if isinstance(action.message, str) else str(action.message)
         ground_truth = action.task_context.ground_truth or "(not provided)"
         response = step_result.observation.final_response or "(no response)"
@@ -78,7 +78,7 @@ Response to Evaluate:
 
 Judge whether the response is correct, incorrect, or not_attempted."""
 
-    def reward_mapper(self, judgment: BaseModel | str) -> float:
+    async def get_reward(self, judgment: BaseModel | str) -> float:
         if isinstance(judgment, SimpleQAJudgment):
             return {"correct": 1.0, "incorrect": 0.0, "not_attempted": 0.0}[judgment.grade]
         return 0.0
