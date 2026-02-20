@@ -143,27 +143,21 @@ class TestOpenAIModelFactory:
 # ---------------------------------------------------------------------------
 
 
-try:
-    import litellm  # noqa: F401
-
-    HAS_LITELLM = True
-except ImportError:
-    HAS_LITELLM = False
-
-
-@pytest.mark.skipif(not HAS_LITELLM, reason="litellm not installed")
 class TestKimiModelFactory:
-    def setup_method(self):
-        from strands_env.core.models import kimi_model_factory
-
-        self.kimi_model_factory = kimi_model_factory
+    @pytest.fixture(autouse=True)
+    def _require_litellm(self):
+        pytest.importorskip("litellm")
 
     def test_returns_callable(self):
-        factory = self.kimi_model_factory()
+        from strands_env.core.models import kimi_model_factory
+
+        factory = kimi_model_factory()
         assert callable(factory)
 
     def test_remaps_max_new_tokens(self):
-        factory = self.kimi_model_factory(sampling_params={"max_new_tokens": 4096})
+        from strands_env.core.models import kimi_model_factory
+
+        factory = kimi_model_factory(sampling_params={"max_new_tokens": 4096})
         model = factory()
         assert model.get_config()["params"]["max_tokens"] == 4096
         assert "max_new_tokens" not in model.get_config()["params"]
