@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for MathRewardFunction."""
+"""Tests for MathVerifyReward."""
 
 from dataclasses import dataclass
 
 from strands_env.core.types import Action, TaskContext, TerminationReason
-from strands_env.rewards.math_reward import MathVerifyReward
+from strands_env.rewards.math_verify_reward import MathVerifyReward
 
 
 @dataclass
