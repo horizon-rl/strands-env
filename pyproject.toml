@@ -35,6 +35,9 @@ dependencies = [
 strands-env = "strands_env.cli:main"
 
 [project.optional-dependencies]
+kimi = ["strands-agents[litellm]"]
+swarm = ["strands-swarms"]
+wide-search = ["ddgs>=9.0.0", "aiohttp>=3.8.0", "dateparser>=1.1.0"]
 dev = [
     # Testing
     "pytest>=7.0.0",

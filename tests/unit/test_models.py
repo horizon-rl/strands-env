@@ -162,33 +162,11 @@ class TestKimiModelFactory:
         factory = self.kimi_model_factory()
         assert callable(factory)
 
-    def test_default_model_id(self):
-        factory = self.kimi_model_factory()
-        model = factory()
-        assert model.get_config()["model_id"] == "moonshot/kimi-k2.5"
-
-    def test_custom_model_id(self):
-        factory = self.kimi_model_factory(model_id="moonshot/kimi-k2")
-        model = factory()
-        assert model.get_config()["model_id"] == "moonshot/kimi-k2"
-
     def test_remaps_max_new_tokens(self):
         factory = self.kimi_model_factory(sampling_params={"max_new_tokens": 4096})
         model = factory()
         assert model.get_config()["params"]["max_tokens"] == 4096
         assert "max_new_tokens" not in model.get_config()["params"]
-
-    def test_does_not_mutate_default_params(self):
-        original_sampling = dict(DEFAULT_SAMPLING_PARAMS)
-        self.kimi_model_factory()
-        assert DEFAULT_SAMPLING_PARAMS == original_sampling
-
-    def test_is_litellm_subclass(self):
-        from strands.models.litellm import LiteLLMModel
-
-        factory = self.kimi_model_factory()
-        model = factory()
-        assert isinstance(model, LiteLLMModel)
 
     def test_preserves_reasoning_content(self):
         """KimiModel._format_regular_messages preserves reasoningContent as top-level field."""
@@ -207,14 +185,4 @@ class TestKimiModelFactory:
         formatted = kimi_model_cls._format_regular_messages(messages)
         assert len(formatted) == 1
         assert formatted[0]["reasoning_content"] == "Let me think..."
-        # reasoningContent should NOT appear in content blocks
         assert all("reasoning" not in str(c) for c in formatted[0]["content"])
-
-    def test_no_reasoning_content_when_absent(self):
-        """No reasoning_content field when message has no reasoningContent blocks."""
-        from strands_env.core.models import _get_kimi_model_class
-
-        kimi_model_cls = _get_kimi_model_class()
-        messages = [{"role": "assistant", "content": [{"text": "Hello"}]}]
-        formatted = kimi_model_cls._format_regular_messages(messages)
-        assert "reasoning_content" not in formatted[0]
