@@ -29,7 +29,6 @@ Example:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 
@@ -90,7 +89,7 @@ class GoogleSearchToolkit:
             top_k: Number of results to return (max {MAX_RESULTS}).
 
         Returns:
-            JSON with search results containing title, url, and snippet.
+            Search results with title, URL, and snippet for each result.
         """
         logger.info(f"[google_search] query={query}, num_results={top_k}")
 
@@ -113,25 +112,17 @@ class GoogleSearchToolkit:
                     response.raise_for_status()
                     data = await response.json()
 
-            results = {}
-            for i, item in enumerate(data.get("items", []), 1):
-                title = item.get("title") or f"Result {i}"
-                snippet = item.get("snippet", "")
-                if len(snippet) > 500:
-                    snippet = snippet[:500] + "..."
-                results[f"{i}. {title}"] = {
-                    "url": item.get("link", ""),
-                    "snippet": snippet,
-                }
+            items = data.get("items", [])
+            if not items:
+                return "No results found."
 
-            return json.dumps({"GoogleSearchResult": results}, indent=4)
-
-        except TimeoutError:
-            logger.error(f"[google_search] timeout for query: {query}")
-            return json.dumps({"GoogleSearchResult": {"Error": "Request timeout"}})
-        except aiohttp.ClientResponseError as e:
-            logger.error(f"[google_search] HTTP error: {e}")
-            return json.dumps({"GoogleSearchResult": {"Error": f"HTTP error: {e.status}"}})
+            lines = []
+            for i, item in enumerate(items, 1):
+                title = item.get("title") or "No title available."
+                url = item.get("link") or "No URL available."
+                snippet = item.get("snippet") or "No snippet available."
+                lines.append(f"{i}. {title} ({url}):\n{snippet}")
+            return "\n\n".join(lines)
         except Exception as e:
             logger.error(f"[google_search] error: {e}")
-            return json.dumps({"GoogleSearchResult": {"Error": str(e)}})
+            return f"Search failed: {e}."
