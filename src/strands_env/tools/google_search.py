@@ -15,8 +15,8 @@
 """Google Custom Search toolkit.
 
 Reads credentials from environment variables by default:
-    GOOGLE_API_KEY: Google Custom Search API key
-    GOOGLE_CSE_ID:  Custom Search Engine ID (cx)
+    `GOOGLE_API_KEY`: Google Custom Search API key
+    `GOOGLE_CSE_ID`: Custom Search Engine ID (cx)
 
 Example:
     >>> import os
@@ -24,11 +24,12 @@ Example:
     >>> os.environ["GOOGLE_CSE_ID"] = "your-cse-id"
     >>> from strands_env.tools import GoogleSearchToolkit
     >>> toolkit = GoogleSearchToolkit()
-    >>> result = toolkit.google_search("Python programming", num_results=3)
+    >>> result = toolkit.google_search("Python programming", top_k=3)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -38,6 +39,7 @@ from strands import tool
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 10
+DEFAULT_MAX_CONCURRENCY = 10
 MAX_RESULTS = 10
 
 _GOOGLE_SEARCH_API_URL = "https://www.googleapis.com/customsearch/v1"
@@ -46,9 +48,9 @@ _GOOGLE_SEARCH_API_URL = "https://www.googleapis.com/customsearch/v1"
 class GoogleSearchToolkit:
     """Google Custom Search tools for strands agents.
 
-    Provides a `google_search` tool that searches the web using Google's
-    Custom Search API and returns structured results with titles, URLs,
-    and snippets.
+    Uses a single shared ``aiohttp.ClientSession`` (created lazily on first
+    call) and an ``asyncio.Semaphore`` to cap concurrent requests to the
+    Google API.  Call :meth:`cleanup` when done to close the session.
 
     Example:
         from strands_env.tools import GoogleSearchToolkit
@@ -61,24 +63,44 @@ class GoogleSearchToolkit:
 
             def get_tools(self):
                 return [self.toolkit.google_search]
+
+            async def cleanup(self):
+                await self.toolkit.cleanup()
     """
 
     def __init__(
         self,
         api_key: str | None = None,
-        search_engine_id: str | None = None,
+        cse_id: str | None = None,
         timeout: int = DEFAULT_TIMEOUT,
+        max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
+        semaphore: asyncio.Semaphore | None = None,
     ):
         """Initialize Google Search Toolkit.
 
         Args:
-            api_key: Google Custom Search API key. Falls back to `GOOGLE_API_KEY` env var.
-            search_engine_id: Custom Search Engine ID (cx). Falls back to `GOOGLE_CSE_ID` env var.
+            api_key: Google Custom Search API key. Falls back to ``GOOGLE_API_KEY`` env var.
+            cse_id: Custom Search Engine ID (cx). Falls back to ``GOOGLE_CSE_ID`` env var.
             timeout: Request timeout in seconds.
+            max_concurrency: Maximum concurrent requests to the Google API (ignored if ``semaphore`` is provided).
+            semaphore: Shared semaphore for global rate limiting across multiple toolkit instances in RL training.
         """
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY")
-        self.search_engine_id = search_engine_id or os.environ.get("GOOGLE_CSE_ID")
-        self.timeout = timeout
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
+        self.cse_id = cse_id or os.getenv("GOOGLE_CSE_ID")
+        if not self.api_key:
+            raise ValueError("Google API key required: pass `api_key` or set `GOOGLE_API_KEY` env var")
+        if not self.cse_id:
+            raise ValueError("Search engine ID required: pass `cse_id` or set `GOOGLE_CSE_ID` env var")
+
+        self._timeout = timeout
+        self._semaphore = semaphore or asyncio.Semaphore(max_concurrency)
+        self._session: aiohttp.ClientSession | None = None
+
+    def _get_session(self) -> aiohttp.ClientSession:
+        """Get or create the shared HTTP session."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self._timeout))
+        return self._session
 
     @tool
     async def google_search(self, query: str, top_k: int = 5) -> str:
@@ -96,19 +118,15 @@ class GoogleSearchToolkit:
         top_k = min(top_k, MAX_RESULTS)
 
         params = {
-            "key": self.api_key,
-            "cx": self.search_engine_id,
+            "cx": self.cse_id,
             "q": query,
             "num": top_k,
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    _GOOGLE_SEARCH_API_URL,
-                    params=params,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout),
-                ) as response:
+            async with self._semaphore:
+                headers = {"X-goog-api-key": self.api_key}
+                async with self._get_session().get(_GOOGLE_SEARCH_API_URL, params=params, headers=headers) as response:
                     response.raise_for_status()
                     data = await response.json()
 
@@ -126,3 +144,9 @@ class GoogleSearchToolkit:
         except Exception as e:
             logger.error(f"[google_search] error: {e}")
             return f"Search failed: {e}."
+
+    async def cleanup(self) -> None:
+        """Close the shared HTTP session."""
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
