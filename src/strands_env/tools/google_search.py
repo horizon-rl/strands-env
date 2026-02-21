@@ -33,7 +33,7 @@ import json
 import logging
 import os
 
-import requests
+import aiohttp
 from strands import tool
 
 logger = logging.getLogger(__name__)
@@ -99,8 +99,6 @@ class GoogleSearchToolkit:
             Returns:
                 JSON with search results containing title, url, and snippet.
             """
-            import asyncio
-
             logger.info(f"[google_search] query={query}, num_results={num_results}")
 
             num_results = min(num_results, MAX_RESULTS)
@@ -112,13 +110,15 @@ class GoogleSearchToolkit:
                 "num": num_results,
             }
 
-            def _fetch():
-                response = requests.get(_GOOGLE_SEARCH_API_URL, params=params, timeout=timeout)
-                response.raise_for_status()
-                return response.json()
-
             try:
-                data = await asyncio.to_thread(_fetch)
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                        _GOOGLE_SEARCH_API_URL,
+                        params=params,
+                        timeout=aiohttp.ClientTimeout(total=timeout),
+                    ) as response:
+                        response.raise_for_status()
+                        data = await response.json()
 
                 results = {}
                 for i, item in enumerate(data.get("items", []), 1):
@@ -133,12 +133,12 @@ class GoogleSearchToolkit:
 
                 return json.dumps({"GoogleSearchResult": results}, indent=4)
 
-            except requests.exceptions.Timeout:
+            except TimeoutError:
                 logger.error(f"[google_search] timeout for query: {query}")
                 return json.dumps({"GoogleSearchResult": {"Error": "Request timeout"}})
-            except requests.exceptions.HTTPError as e:
+            except aiohttp.ClientResponseError as e:
                 logger.error(f"[google_search] HTTP error: {e}")
-                return json.dumps({"GoogleSearchResult": {"Error": f"HTTP error: {e.response.status_code}"}})
+                return json.dumps({"GoogleSearchResult": {"Error": f"HTTP error: {e.status}"}})
             except Exception as e:
                 logger.error(f"[google_search] error: {e}")
                 return json.dumps({"GoogleSearchResult": {"Error": str(e)}})
