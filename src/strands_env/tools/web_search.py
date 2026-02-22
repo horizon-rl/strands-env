@@ -91,6 +91,12 @@ class WebSearchToolkit:
             self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self._timeout))
         return self._session
 
+    async def cleanup(self) -> None:
+        """Close the shared HTTP session."""
+        if self._session and not self._session.closed:
+            await self._session.close()
+            self._session = None
+
     def _apply_blocked_domains(self, query: str) -> str:
         """Append ``-site:`` exclusions to *query* for blocked domains."""
         if self._blocked_domains:
@@ -190,13 +196,3 @@ class WebSearchToolkit:
         except Exception as e:
             logger.error(f"[google_search] error: {e}")
             return f"Search failed: {e}."
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
-    async def cleanup(self) -> None:
-        """Close the shared HTTP session."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
