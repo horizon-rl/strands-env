@@ -74,7 +74,7 @@ class TestGetSessionWithRoleAssumption:
 
         # Verify STS was called
         mock_boto3_client.assert_called_with("sts", region_name="us-east-1")
-        mock_sts.assume_role.assert_called_with(RoleArn=role_arn, RoleSessionName="StrandsEnvSession")
+        mock_sts.assume_role.assert_called_with(RoleArn=role_arn, RoleSessionName="strands-env")
 
         # Verify session was created
         assert session is not None

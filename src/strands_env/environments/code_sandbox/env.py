@@ -89,9 +89,7 @@ class CodeSandboxEnv(Environment):
             verbose=verbose,
         )
         self.mode = mode
-        self._toolkit = CodeInterpreterToolkit(
-            client=client or get_client(service_name="bedrock-agentcore")
-        )
+        self._toolkit = CodeInterpreterToolkit(client=client or get_client(service_name="bedrock-agentcore"))
 
     @override
     def get_tools(self):
