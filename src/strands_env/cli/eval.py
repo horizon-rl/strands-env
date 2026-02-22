@@ -79,7 +79,7 @@ def list_cmd():
 @click.option(
     "--backend",
     "-b",
-    type=click.Choice(["sglang", "bedrock"]),
+    type=click.Choice(["sglang", "bedrock", "kimi"]),
     default="sglang",
     help="Model backend.",
 )
@@ -129,8 +129,8 @@ def list_cmd():
 @click.option(
     "--temperature",
     type=float,
-    default=0.7,
-    help="Sampling temperature.",
+    default=None,
+    help="Sampling temperature. If not set, uses the model's default.",
 )
 @click.option(
     "--max-tokens",
@@ -141,8 +141,8 @@ def list_cmd():
 @click.option(
     "--top-p",
     type=float,
-    default=0.95,
-    help="Top-p sampling parameter.",
+    default=None,
+    help="Top-p sampling parameter. If not set, uses the model's default.",
 )
 @click.option(
     "--top-k",
@@ -213,7 +213,7 @@ def run_cmd(
     evaluator_path: Path | None,
     env_path: Path,
     # Model
-    backend: Literal["sglang", "bedrock"],
+    backend: Literal["sglang", "bedrock", "kimi"],
     base_url: str,
     model_id: str | None,
     tokenizer_path: str | None,
@@ -222,9 +222,9 @@ def run_cmd(
     role_arn: str | None,
     tool_parser: str | None,
     # Sampling
-    temperature: float,
+    temperature: float | None,
     max_tokens: int,
-    top_p: float,
+    top_p: float | None,
     top_k: int | None,
     # Environment
     system_prompt: Path | None,
@@ -311,9 +311,9 @@ def run_cmd(
 
     # Get output paths based on benchmark name
     output_dir = eval_config.get_output_dir(benchmark_name)
-    results_path = eval_config.get_results_path(benchmark_name)
-    metrics_path = eval_config.get_metrics_path(benchmark_name)
-    config_path = eval_config.get_config_path(benchmark_name)
+    results_path = output_dir / "results.jsonl"
+    metrics_path = output_dir / "metrics.json"
+    config_path = output_dir / "config.json"
 
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)

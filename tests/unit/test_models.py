@@ -16,6 +16,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from strands_sglang import SGLangClient, SGLangModel
 
 from strands_env.core.models import (
@@ -106,6 +107,23 @@ class TestBedrockModelFactory:
         )
         assert DEFAULT_SAMPLING_PARAMS == original
 
+    @patch("strands_env.core.models.BedrockModel")
+    def test_shared_client_across_instances(self, mock_bedrock_cls):
+        """All models from the same factory should share a single boto3 client."""
+        import boto3
+
+        mock_client = MagicMock()
+        mock_bedrock_cls.return_value.client = mock_client
+
+        factory = bedrock_model_factory(
+            model_id="test",
+            boto_session=MagicMock(spec=boto3.Session),
+        )
+        model1 = factory()
+        model2 = factory()
+        assert model1.client is model2.client
+        assert model1.client is mock_client
+
 
 # ---------------------------------------------------------------------------
 # openai_model_factory
@@ -135,3 +153,47 @@ class TestOpenAIModelFactory:
         original = dict(DEFAULT_SAMPLING_PARAMS)
         openai_model_factory(model_id="gpt-4o")
         assert DEFAULT_SAMPLING_PARAMS == original
+
+
+# ---------------------------------------------------------------------------
+# kimi_model_factory
+# ---------------------------------------------------------------------------
+
+
+class TestKimiModelFactory:
+    @pytest.fixture(autouse=True)
+    def _require_litellm(self):
+        pytest.importorskip("litellm")
+
+    def test_returns_callable(self):
+        from strands_env.core.models import kimi_model_factory
+
+        factory = kimi_model_factory()
+        assert callable(factory)
+
+    def test_remaps_max_new_tokens(self):
+        from strands_env.core.models import kimi_model_factory
+
+        factory = kimi_model_factory(sampling_params={"max_new_tokens": 4096})
+        model = factory()
+        assert model.get_config()["params"]["max_tokens"] == 4096
+        assert "max_new_tokens" not in model.get_config()["params"]
+
+    def test_preserves_reasoning_content(self):
+        """KimiModel._format_regular_messages preserves reasoningContent as top-level field."""
+        from strands_env.core.models import _get_kimi_model_class
+
+        kimi_model_cls = _get_kimi_model_class()
+        messages = [
+            {
+                "role": "assistant",
+                "content": [
+                    {"reasoningContent": {"reasoningText": {"text": "Let me think..."}}},
+                    {"text": "The answer is 42."},
+                ],
+            }
+        ]
+        formatted = kimi_model_cls._format_regular_messages(messages)
+        assert len(formatted) == 1
+        assert formatted[0]["reasoning_content"] == "Let me think..."
+        assert all("reasoning" not in str(c) for c in formatted[0]["content"])

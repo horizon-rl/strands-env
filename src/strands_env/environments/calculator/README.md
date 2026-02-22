@@ -9,7 +9,7 @@ No additional dependencies required beyond `strands-env`.
 ## Usage
 
 ```python
-from strands_env.environments import CalculatorEnv
+from strands_env.environments.calculator import CalculatorEnv
 
 env = CalculatorEnv(model_factory=model_factory)
 result = await env.step(action)

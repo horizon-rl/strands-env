@@ -1,6 +1,18 @@
 # AIME Code
 
-AIME benchmark evaluation using `CodeSandboxEnv` (AWS Bedrock AgentCore Code Interpreter).
+AIME math competition benchmark using `CodeSandboxEnv` (AWS Bedrock AgentCore Code Interpreter).
+
+## Variants
+
+| Name | Description |
+|---|---|
+| `aime-2024` | [AIME 2024](https://huggingface.co/datasets/HuggingFaceH4/aime_2024) |
+| `aime-2025` | [AIME 2025](https://huggingface.co/datasets/MathArena/aime_2025) |
+| `aime-2026` | [AIME 2026](https://huggingface.co/datasets/MathArena/aime_2026) | 
+
+## Setup
+
+Requires AWS credentials with Bedrock AgentCore access.
 
 ## Files
 
@@ -9,9 +21,13 @@ AIME benchmark evaluation using `CodeSandboxEnv` (AWS Bedrock AgentCore Code Int
 ## Usage
 
 ```bash
-strands-env eval aime-2024 \
+strands-env eval run aime-2026 \
     --env examples/eval/aime_code/code_sandbox_env.py \
-    --base-url http://localhost:30000
+    --backend sglang \
+    --base-url http://localhost:30000 \
+    --max-tokens 16384 \
+    --n-samples-per-prompt 1 \
+    --max-concurrency 10
 ```
 
-Requires AWS credentials for Bedrock AgentCore. See `strands-env eval --help` for all CLI options.
+See `strands-env eval run --help` for all CLI options.

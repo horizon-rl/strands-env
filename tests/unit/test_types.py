@@ -187,11 +187,11 @@ class TestTerminationReason:
     def test_generic_error(self):
         error = EventLoopException(Exception())
         error.__cause__ = ValueError("something broke")
-        assert TerminationReason.from_error(error) == TerminationReason.AGENT_ERROR
+        assert TerminationReason.from_error(error) == TerminationReason.UNCLASSIFIED_ERROR
 
     def test_non_event_loop_exception(self):
         error = RuntimeError("direct error")
-        assert TerminationReason.from_error(error) == TerminationReason.AGENT_ERROR
+        assert TerminationReason.from_error(error) == TerminationReason.UNCLASSIFIED_ERROR
 
 
 # ---------------------------------------------------------------------------

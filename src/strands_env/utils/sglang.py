@@ -16,59 +16,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import TYPE_CHECKING, Any
-
 import httpx
-from strands_sglang import SGLangClient
-
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer
-
-_SGLANG_CLIENT_CONFIG = {
-    "timeout": 900.0,
-    "connect_timeout": 5.0,
-    "max_retries": 60,
-    "retry_delay": 1.0,
-}
-
-
-@lru_cache(maxsize=None)
-def get_cached_client(base_url: str, max_connections: int) -> SGLangClient:
-    """Get a shared (cached) `SGLangClient` for connection pooling."""
-    return SGLangClient(base_url, max_connections=max_connections, **_SGLANG_CLIENT_CONFIG)
-
-
-def get_cached_client_from_slime_args(args: Any) -> SGLangClient:
-    """Get a shared (cached) `SGLangClient` from `slime`'s training args."""
-    base_url = f"http://{args.sglang_router_ip}:{args.sglang_router_port}"
-    max_connections = args.sglang_server_concurrency * args.rollout_num_gpus // args.rollout_num_gpus_per_engine
-    return get_cached_client(base_url=base_url, max_connections=max_connections)
-
-
-@lru_cache(maxsize=None)
-def get_cached_tokenizer(tokenizer_path: str) -> PreTrainedTokenizer:
-    """Get a shared (cached) tokenizer.
-
-    Args:
-        tokenizer_path: Path or HuggingFace model ID for the tokenizer.
-
-    Returns:
-        Cached tokenizer instance.
-    """
-    from transformers import AutoTokenizer
-
-    return AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
-
-
-def clear_clients() -> None:
-    """Clear all cached `SGLangClient` instances."""
-    get_cached_client.cache_clear()
-
-
-def clear_tokenizers() -> None:
-    """Clear all cached tokenizer instances."""
-    get_cached_tokenizer.cache_clear()
 
 
 def check_server_health(base_url: str, timeout: float = 5.0) -> None:

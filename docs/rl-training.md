@@ -17,13 +17,13 @@ Customize the `generate` and `reward_func` methods to replace single generation 
 ```python
 from strands_env.core import Action, TaskContext
 from strands_env.core.models import sglang_model_factory
-from strands_env.utils.sglang import get_cached_client_from_slime_args
+from strands_sglang import get_client_from_slime_args
 
 async def generate(args, sample, sampling_params):
     # Build model factory with cached client
     factory = sglang_model_factory(
         tokenizer=tokenizer,
-        client=get_cached_client_from_slime_args(args),
+        client=get_client_from_slime_args(args),
         sampling_params=sampling_params,
     )
 
@@ -52,7 +52,7 @@ async def reward_func(args, sample, **kwargs):
 
 ## Key Points
 
-- **Connection pooling**: `get_cached_client_from_slime_args(args)` provides connection pooling across rollouts for efficient GPU utilization
+- **Connection pooling**: `get_client_from_slime_args(args)` provides `lru_cache`-backed connection pooling across rollouts for efficient GPU utilization
 - **Token observations**: `TokenObservation` contains token IDs and logprobs for on-policy training (SGLang backend only)
 - **Async rewards**: Reward is computed separately to allow async/batched reward computation
 - **Model factory pattern**: Each `step()` creates a fresh model instance for clean token tracking state

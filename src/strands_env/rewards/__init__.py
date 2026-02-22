@@ -14,10 +14,10 @@
 
 """Reward functions for strands-env."""
 
-from .llm_judge_reward import LLMJudgeRewardFunction
-from .math_reward import MathRewardFunction
+from .llm_judge_reward import LLMJudgeReward
+from .math_verify_reward import MathVerifyReward
 
 __all__ = [
-    "LLMJudgeRewardFunction",
-    "MathRewardFunction",
+    "LLMJudgeReward",
+    "MathVerifyReward",
 ]

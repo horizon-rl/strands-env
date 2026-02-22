@@ -16,8 +16,8 @@
 
 from strands_env.cli.config import EnvConfig
 from strands_env.core.models import ModelFactory
-from strands_env.environments import CodeMode, CodeSandboxEnv
-from strands_env.rewards import MathRewardFunction
+from strands_env.environments.code_sandbox import CodeMode, CodeSandboxEnv
+from strands_env.rewards import MathVerifyReward
 
 
 def create_env_factory(model_factory: ModelFactory, env_config: EnvConfig):
@@ -30,7 +30,7 @@ def create_env_factory(model_factory: ModelFactory, env_config: EnvConfig):
     Returns:
         Async env_factory function.
     """
-    reward_fn = MathRewardFunction()
+    reward_fn = MathVerifyReward()
 
     async def env_factory(_action):
         return CodeSandboxEnv(

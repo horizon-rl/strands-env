@@ -119,7 +119,7 @@ class TestStep:
 
     @patch("strands_env.core.environment.Agent")
     async def test_step_with_agent_error(self, mock_agent_cls, env):
-        """An unrecognized exception maps to AGENT_ERROR."""
+        """An unrecognized exception maps to UNCLASSIFIED_ERROR."""
         agent_instance = MagicMock()
         agent_instance.invoke_async = AsyncMock(side_effect=RuntimeError("boom"))
         agent_instance.messages = []
@@ -130,7 +130,7 @@ class TestStep:
         action = Action(message="Do something")
         result = await env.step(action)
 
-        assert result.termination_reason == TerminationReason.AGENT_ERROR
+        assert result.termination_reason == TerminationReason.UNCLASSIFIED_ERROR
 
     @patch("strands_env.core.environment.Agent")
     async def test_step_with_reward_fn(self, mock_agent_cls, model_factory):

@@ -23,7 +23,7 @@ import pytest
 
 from strands_env.core.types import Action, RewardResult, StepResult, TaskContext, TerminationReason
 from strands_env.environments.code_sandbox import CodeMode, CodeSandboxEnv
-from strands_env.utils.aws import get_session
+from strands_env.utils.aws import check_credentials, get_client, get_session
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -31,23 +31,20 @@ from strands_env.utils.aws import get_session
 
 
 @pytest.fixture(scope="session")
-def boto3_session():
-    """Create a boto3 session, skipping if AWS credentials are not configured."""
-    try:
-        session = get_session()
-        # Verify credentials are actually available
-        session.client("sts").get_caller_identity()
-    except Exception as exc:
-        pytest.skip(f"AWS credentials not available: {exc}")
-    return session
+def agentcore_client():
+    """Create a bedrock-agentcore client, skipping if AWS credentials are not configured."""
+    session = get_session()
+    if not check_credentials(session):
+        pytest.skip("AWS credentials not available")
+    return get_client("bedrock-agentcore")
 
 
 @pytest.fixture
-async def code_env(model_factory, boto3_session):
+async def code_env(model_factory, agentcore_client):
     """CodeSandboxEnv in CODE mode with cleanup."""
     env = CodeSandboxEnv(
         model_factory=model_factory,
-        boto3_session=boto3_session,
+        client=agentcore_client,
         mode=CodeMode.CODE,
     )
     yield env
@@ -55,11 +52,11 @@ async def code_env(model_factory, boto3_session):
 
 
 @pytest.fixture
-async def terminal_env(model_factory, boto3_session):
+async def terminal_env(model_factory, agentcore_client):
     """CodeSandboxEnv in TERMINAL mode with cleanup."""
     env = CodeSandboxEnv(
         model_factory=model_factory,
-        boto3_session=boto3_session,
+        client=agentcore_client,
         mode=CodeMode.TERMINAL,
     )
     yield env
@@ -148,7 +145,7 @@ class TestCodeMode:
         result2 = await code_env.step(action2)
         assert result2.termination_reason == TerminationReason.TASK_COMPLETE
 
-    async def test_reward_fn_called(self, model_factory, boto3_session):
+    async def test_reward_fn_called(self, model_factory, agentcore_client):
         """Reward function is invoked and result attached to StepResult."""
 
         class ContainsReward:
@@ -160,7 +157,7 @@ class TestCodeMode:
 
         env = CodeSandboxEnv(
             model_factory=model_factory,
-            boto3_session=boto3_session,
+            client=agentcore_client,
             mode=CodeMode.CODE,
             reward_fn=ContainsReward(),
         )
@@ -200,11 +197,11 @@ class TestTerminalMode:
 
 
 class TestCodeAndTerminalMode:
-    async def test_step_completes(self, model_factory, boto3_session):
+    async def test_step_completes(self, model_factory, agentcore_client):
         """Agent has both code and terminal tools available."""
         env = CodeSandboxEnv(
             model_factory=model_factory,
-            boto3_session=boto3_session,
+            client=agentcore_client,
             mode=CodeMode.CODE_AND_TERMINAL,
         )
         try:
@@ -223,11 +220,11 @@ class TestCodeAndTerminalMode:
 
 
 class TestToolLimit:
-    async def test_tool_iteration_limit(self, model_factory, boto3_session):
+    async def test_tool_iteration_limit(self, model_factory, agentcore_client):
         """Environment respects max_tool_iters."""
         env = CodeSandboxEnv(
             model_factory=model_factory,
-            boto3_session=boto3_session,
+            client=agentcore_client,
             mode=CodeMode.CODE,
             system_prompt=(
                 "You are a coding assistant. Always use the execute_code tool. "
@@ -246,7 +243,7 @@ class TestToolLimit:
         finally:
             await env.cleanup()
 
-    async def test_max_tool_calls(self, model_factory, boto3_session):
+    async def test_max_tool_calls(self, model_factory, agentcore_client):
         """Environment respects max_tool_calls (distinct from max_tool_iters).
 
         Note: parallel tool calls within a single iteration may exceed the limit
@@ -254,7 +251,7 @@ class TestToolLimit:
         """
         env = CodeSandboxEnv(
             model_factory=model_factory,
-            boto3_session=boto3_session,
+            client=agentcore_client,
             mode=CodeMode.CODE,
             system_prompt=(
                 "You are a coding assistant. Always use the execute_code tool. "

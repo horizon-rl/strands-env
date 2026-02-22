@@ -24,17 +24,17 @@ import boto3
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=None)
 def get_session(
     region: str = "us-east-1",
     profile_name: str | None = None,
     role_arn: str | None = None,
-    session_name: str = "StrandsEnvSession",
+    session_name: str = "strands-env",
 ) -> boto3.Session:
-    """Get a cached boto3 session.
+    """Create a new boto3 session.
 
-    Credentials are managed by boto3's provider chain (env vars, ~/.aws/credentials,
-    IAM instance role, etc.) and auto-refresh automatically.
+    Returns a **fresh** session every time — boto3 sessions are not thread-safe,
+    so they must not be shared across concurrent calls.  Use :func:`get_client`
+    instead when you need a cached, thread-safe client.
 
     If `role_arn` is provided, assumes the role using STS with auto-refreshing
     credentials via botocore's `RefreshableCredentials`.
@@ -46,7 +46,7 @@ def get_session(
         session_name: Session name for assumed role (only used if role_arn provided).
 
     Returns:
-        Cached boto3 Session instance.
+        A new boto3 Session instance.
     """
     if role_arn:
         return _create_assumed_role_session(role_arn, region, session_name)
@@ -84,6 +84,43 @@ def _create_assumed_role_session(role_arn: str, region: str, session_name: str) 
     return boto3.Session(botocore_session=botocore_session, region_name=region)
 
 
-def clear_session_cache() -> None:
-    """Clear all cached boto3 sessions."""
-    get_session.cache_clear()
+@lru_cache(maxsize=None)
+def get_client(
+    service_name: str,
+    region: str = "us-east-1",
+    profile_name: str | None = None,
+    role_arn: str | None = None,
+    session_name: str = "strands-env",
+):
+    """Get a cached boto3 client.
+
+    Each client gets its own dedicated boto3 Session, avoiding the thread-safety
+    issues of sharing a Session across clients. The client itself is thread-safe
+    and can be shared. If ``role_arn`` is provided, the underlying Session uses
+    ``RefreshableCredentials`` so the client auto-refreshes when credentials expire.
+
+    Args:
+        service_name: AWS service name (e.g. "bedrock-agentcore", "lambda", "dynamodb").
+        region: AWS region name.
+        profile_name: Optional AWS profile name from ~/.aws/config.
+        role_arn: Optional ARN of the IAM role to assume.
+        session_name: Session name for assumed role (only used if role_arn provided).
+
+    Returns:
+        Cached boto3 client instance.
+    """
+    if role_arn:
+        session = _create_assumed_role_session(role_arn, region, session_name)
+    else:
+        session = boto3.Session(region_name=region, profile_name=profile_name)
+    logger.info(f"Creating cached boto3 client: service={service_name}, region={region}")
+    return session.client(service_name, region_name=region)
+
+
+def check_credentials(session: boto3.Session) -> bool:
+    """Check whether a boto3 session has valid credentials."""
+    try:
+        session.client("sts").get_caller_identity()
+        return True
+    except Exception:
+        return False

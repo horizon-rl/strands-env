@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Environments for strands-env."""
+"""Web search environment with pluggable search providers."""
+
+from .env import WebSearchEnv
+
+__all__ = ["WebSearchEnv"]

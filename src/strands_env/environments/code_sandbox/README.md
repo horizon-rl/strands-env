@@ -16,12 +16,12 @@ A sandboxed code execution environment using AWS Bedrock AgentCore Code Interpre
 
 ```python
 from strands_env.environments.code_sandbox import CodeSandboxEnv, CodeMode
-from strands_env.utils.aws import get_session
+from strands_env.utils.aws import get_client
 
-session = get_session(region="us-east-1")
+client = get_client("bedrock-agentcore", region="us-east-1")
 env = CodeSandboxEnv(
     model_factory=model_factory,
-    boto3_session=session,
+    client=client,
     mode=CodeMode.CODE,  # CODE, TERMINAL, or CODE_AND_TERMINAL
 )
 

@@ -24,10 +24,10 @@ from typing_extensions import override
 
 from strands_env.core.environment import Environment
 from strands_env.tools import CodeInterpreterToolkit
-from strands_env.utils.aws import get_session
+from strands_env.utils.aws import get_client
 
 if TYPE_CHECKING:
-    import boto3
+    from botocore.client import BaseClient
 
     from strands_env.core.types import ModelFactory, RewardFunction
 
@@ -53,11 +53,11 @@ class CodeSandboxEnv(Environment):
 
     Example:
         from strands_env.environments.code_sandbox import CodeSandboxEnv, CodeMode
-        from strands_env.utils.aws import get_session
+        from strands_env.utils.aws import get_client
 
-        session = get_session(region="us-east-1")
+        client = get_client("bedrock-agentcore", region="us-east-1")
         env = CodeSandboxEnv(
-            boto3_session=session,
+            client=client,
             model_factory=model_factory,
             mode=CodeMode.CODE,  # Only Python execution
         )
@@ -77,7 +77,7 @@ class CodeSandboxEnv(Environment):
         max_tool_iters: int | None = 10,
         max_tool_calls: int | None = 50,
         verbose: bool = False,
-        boto3_session: boto3.Session | None = None,
+        client: BaseClient | None = None,
         mode: CodeMode = CodeMode.CODE,
     ):
         super().__init__(
@@ -89,9 +89,7 @@ class CodeSandboxEnv(Environment):
             verbose=verbose,
         )
         self.mode = mode
-        self._toolkit = CodeInterpreterToolkit(
-            boto3_session=boto3_session or get_session(), session_name="strands-env-code-sandbox"
-        )
+        self._toolkit = CodeInterpreterToolkit(client=client or get_client(service_name="bedrock-agentcore"))
 
     @override
     def get_tools(self):

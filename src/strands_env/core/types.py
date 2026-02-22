@@ -157,7 +157,7 @@ class TerminationReason(str, Enum):
     MAX_TOOL_ITERATIONS_REACHED = "max_tool_iterations_reached"
     MAX_TOOL_CALLS_REACHED = "max_tool_calls_reached"
     TIMEOUT = "timeout"
-    AGENT_ERROR = "agent_error"  # Any other exception not covered by other reasons
+    UNCLASSIFIED_ERROR = "unclassified_error"
 
     @classmethod
     def _is_timeout(cls, error: BaseException | None) -> bool:
@@ -192,7 +192,7 @@ class TerminationReason(str, Enum):
             case e if cls._is_timeout(e):
                 reason = cls.TIMEOUT
             case _:
-                reason = cls.AGENT_ERROR
+                reason = cls.UNCLASSIFIED_ERROR
 
         logger.warning(f"Step terminated: {reason.value} - {cause}")
         return reason

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -25,28 +26,21 @@ from typing import Literal
 class SamplingConfig:
     """Sampling parameters for model generation."""
 
-    temperature: float = 0.7
+    temperature: float | None = None
     max_new_tokens: int = 16384
-    top_p: float = 0.95
+    top_p: float | None = None
     top_k: int | None = None
 
     def to_dict(self) -> dict:
-        """Convert to dict, excluding None values."""
-        d = {
-            "temperature": self.temperature,
-            "max_new_tokens": self.max_new_tokens,
-            "top_p": self.top_p,
-        }
-        if self.top_k is not None:
-            d["top_k"] = self.top_k
-        return d
+        """Convert to dict, excluding `None` values so the model uses its own defaults."""
+        return {k: v for k, v in dataclasses.asdict(self).items() if v is not None}
 
 
 @dataclass
 class ModelConfig:
     """Model configuration."""
 
-    backend: Literal["sglang", "bedrock"] = "sglang"
+    backend: Literal["sglang", "bedrock", "kimi"] = "sglang"
 
     # SGLang
     base_url: str = "http://localhost:30000"
@@ -64,17 +58,9 @@ class ModelConfig:
 
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
-        return {
-            "backend": self.backend,
-            "base_url": self.base_url,
-            "tokenizer_path": self.tokenizer_path,
-            "tool_parser": self.tool_parser,
-            "model_id": self.model_id,
-            "region": self.region,
-            "profile_name": self.profile_name,
-            "role_arn": self.role_arn,
-            "sampling": self.sampling.to_dict(),
-        }
+        d = dataclasses.asdict(self)
+        d["sampling"] = self.sampling.to_dict()
+        return d
 
 
 @dataclass
@@ -95,11 +81,10 @@ class EnvConfig:
 
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
-        return {
-            "system_prompt": self.system_prompt,  # Save actual content for reproducibility
-            "max_tool_iters": self.max_tool_iters,
-            "max_tool_calls": self.max_tool_calls,
-        }
+        d = dataclasses.asdict(self)
+        d["system_prompt_path"] = str(self.system_prompt_path) if self.system_prompt_path else None
+        d["system_prompt"] = self.system_prompt  # Save actual content for reproducibility
+        return d
 
 
 @dataclass
@@ -118,23 +103,8 @@ class EvalConfig:
             return self.output_dir
         return Path(f"{benchmark_name}_eval")
 
-    def get_results_path(self, benchmark_name: str) -> Path:
-        """Get path for results JSONL file."""
-        return self.get_output_dir(benchmark_name) / "results.jsonl"
-
-    def get_metrics_path(self, benchmark_name: str) -> Path:
-        """Get path for metrics JSON file."""
-        return self.get_output_dir(benchmark_name) / "metrics.json"
-
-    def get_config_path(self, benchmark_name: str) -> Path:
-        """Get path for config JSON file."""
-        return self.get_output_dir(benchmark_name) / "config.json"
-
     def to_dict(self) -> dict:
         """Convert to dict for serialization."""
-        return {
-            "n_samples_per_prompt": self.n_samples_per_prompt,
-            "max_concurrency": self.max_concurrency,
-            "save_interval": self.save_interval,
-            "keep_tokens": self.keep_tokens,
-        }
+        d = dataclasses.asdict(self)
+        d["output_dir"] = str(self.output_dir) if self.output_dir else None
+        return d

@@ -83,7 +83,7 @@ The package lives in `src/strands_env/` with these modules:
 
 ### `utils/`
 
-**sglang.py** — SGLang client caching with `@lru_cache`. `get_cached_client(base_url, max_connections)` for connection pooling. `get_cached_client_from_slime_args(args)` for slime RL training integration. `check_server_health(base_url)` for early validation.
+**sglang.py** — Sync SGLang server utilities. `check_server_health(base_url)` for early validation. `get_model_id(base_url)` to query the served model. Client/tokenizer caching has moved to `strands_sglang.utils`.
 
 **aws.py** — AWS boto3 session caching. `get_session(region, profile_name, role_arn)` with `@lru_cache`. If `role_arn` provided, uses `RefreshableCredentials` for programmatic role assumption with auto-refresh; otherwise returns basic session.
 

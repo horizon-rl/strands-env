@@ -21,10 +21,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "strands-sglang>=0.2.1",
+    "strands-sglang",
     "strands-agents-tools",
-    "boto3>=1.26.0",
-    "transformers>=4.0.0,<5.0.0",
     "datasets",
     "math-verify>=0.8.0",
     "click>=8.0.0",
@@ -35,6 +33,7 @@ dependencies = [
 strands-env = "strands_env.cli:main"
 
 [project.optional-dependencies]
+litellm = ["strands-agents[litellm]"]
 dev = [
     # Testing
     "pytest>=7.0.0",

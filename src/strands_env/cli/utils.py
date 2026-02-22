@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Callable
 
 import click
 
-from strands_env.core.models import ModelFactory, bedrock_model_factory, sglang_model_factory
+from strands_env.core.models import ModelFactory, bedrock_model_factory, kimi_model_factory, sglang_model_factory
 
 from .config import EnvConfig, ModelConfig
 
@@ -239,13 +239,17 @@ def build_model_factory(config: ModelConfig, max_concurrency: int) -> ModelFacto
         return _build_sglang_model_factory(config, max_concurrency, sampling)
     elif config.backend == "bedrock":
         return _build_bedrock_model_factory(config, sampling)
+    elif config.backend == "kimi":
+        return _build_kimi_model_factory(config, sampling)
     else:
         raise click.ClickException(f"Unknown backend: {config.backend}")
 
 
 def _build_sglang_model_factory(config: ModelConfig, max_concurrency: int, sampling: dict) -> ModelFactory:
     """Build SGLang model factory."""
-    from strands_env.utils.sglang import check_server_health, get_cached_client, get_cached_tokenizer, get_model_id
+    from strands_sglang import get_client, get_tokenizer
+
+    from strands_env.utils.sglang import check_server_health, get_model_id
 
     # Check server health before proceeding
     try:
@@ -253,7 +257,7 @@ def _build_sglang_model_factory(config: ModelConfig, max_concurrency: int, sampl
     except ConnectionError as e:
         raise click.ClickException(str(e))
 
-    client = get_cached_client(config.base_url, max_concurrency)
+    client = get_client(config.base_url, max_connections=max_concurrency)
 
     # Resolve and backfill model_id/tokenizer_path for reproducibility
     if not config.model_id:
@@ -261,7 +265,7 @@ def _build_sglang_model_factory(config: ModelConfig, max_concurrency: int, sampl
     if not config.tokenizer_path:
         config.tokenizer_path = config.model_id
 
-    tokenizer = get_cached_tokenizer(config.tokenizer_path)
+    tokenizer = get_tokenizer(config.tokenizer_path)
     tool_parser = load_tool_parser(config.tool_parser)
 
     return sglang_model_factory(
@@ -286,3 +290,16 @@ def _build_bedrock_model_factory(config: ModelConfig, sampling: dict) -> ModelFa
     )
 
     return bedrock_model_factory(model_id=config.model_id, boto_session=boto_session, sampling_params=sampling)
+
+
+def _build_kimi_model_factory(config: ModelConfig, sampling: dict) -> ModelFactory:
+    """Build Kimi (Moonshot AI) model factory via LiteLLM."""
+    import os
+
+    if not os.getenv("MOONSHOT_API_KEY"):
+        raise click.ClickException("MOONSHOT_API_KEY environment variable is required for Kimi backend")
+
+    return kimi_model_factory(
+        model_id=config.model_id or "moonshot/kimi-k2.5",
+        sampling_params=sampling,
+    )

@@ -44,7 +44,7 @@ _EXTRACTION_CONFIG = (LatexExtractionConfig(), ExprExtractionConfig())
 _MATH_VERIFY_ERRORS = (Exception, MathVerifyTimeout)
 
 
-class MathRewardFunction(RewardFunction):
+class MathVerifyReward(RewardFunction):
     """Reward 1.0 if the model's ``\\boxed{}`` answer is mathematically equivalent to ground truth.
 
     Uses ``math_verify.parse`` to extract and convert answers to SymPy,
