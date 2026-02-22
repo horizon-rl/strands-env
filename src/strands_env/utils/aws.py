@@ -24,17 +24,17 @@ import boto3
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=None)
 def get_session(
     region: str = "us-east-1",
     profile_name: str | None = None,
     role_arn: str | None = None,
     session_name: str = "StrandsEnvSession",
 ) -> boto3.Session:
-    """Get a cached boto3 session.
+    """Create a new boto3 session.
 
-    Credentials are managed by boto3's provider chain (env vars, ~/.aws/credentials,
-    IAM instance role, etc.) and auto-refresh automatically.
+    Returns a **fresh** session every time — boto3 sessions are not thread-safe,
+    so they must not be shared across concurrent calls.  Use :func:`get_client`
+    instead when you need a cached, thread-safe client.
 
     If `role_arn` is provided, assumes the role using STS with auto-refreshing
     credentials via botocore's `RefreshableCredentials`.
@@ -46,7 +46,7 @@ def get_session(
         session_name: Session name for assumed role (only used if role_arn provided).
 
     Returns:
-        Cached boto3 Session instance.
+        A new boto3 Session instance.
     """
     if role_arn:
         return _create_assumed_role_session(role_arn, region, session_name)
@@ -124,9 +124,3 @@ def check_credentials(session: boto3.Session) -> bool:
         return True
     except Exception:
         return False
-
-
-def clear_session_cache() -> None:
-    """Clear all cached boto3 sessions and clients."""
-    get_session.cache_clear()
-    get_client.cache_clear()
