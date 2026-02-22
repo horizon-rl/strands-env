@@ -43,10 +43,6 @@ class WebSearchToolkit:
     use.  Credentials are validated lazily — only when the corresponding
     tool method is actually called.
 
-    A single shared :class:`aiohttp.ClientSession` (created lazily) and
-    an :class:`asyncio.Semaphore` cap concurrent requests across all
-    providers.  Call :meth:`cleanup` when done to close the session.
-
     Example::
 
         from strands_env.tools import WebSearchToolkit

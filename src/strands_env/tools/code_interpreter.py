@@ -32,23 +32,6 @@ class CodeInterpreterToolkit:
 
     Provides `execute_code` and `execute_command` tools for running Python code
     and shell commands in a sandboxed environment.
-
-    Example:
-        from strands_env.utils.aws import get_client
-
-        client = get_client("bedrock-agentcore", region="us-east-1")
-        toolkit = CodeInterpreterToolkit(client=client)
-
-        # In environment:
-        class MyEnv(Environment):
-            def __init__(self, client, ...):
-                self.toolkit = CodeInterpreterToolkit(client)
-
-            def get_tools(self):
-                return [self.toolkit.execute_code, self.toolkit.execute_command]
-
-            async def cleanup(self):
-                self.toolkit.cleanup()
     """
 
     def __init__(
