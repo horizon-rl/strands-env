@@ -105,6 +105,10 @@ class WebSearchToolkit:
             return query + " " + " ".join(f"-site:{d}" for d in self._blocked_domains)
         return query
 
+    # ------------------------------------------------------------------
+    # Result formatting hook (subclasses can override this to customize)
+    # ------------------------------------------------------------------
+
     @staticmethod
     def format_results(
         items: list[dict], *, title_key: str = "title", url_key: str = "link", snippet_key: str = "snippet"
