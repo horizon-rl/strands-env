@@ -27,6 +27,8 @@ dependencies = [
     "math-verify>=0.8.0",
     "click>=8.0.0",
     "tqdm>=4.0.0",
+    "html2text",
+    "trafilatura>=2.0.0",
 ]
 
 [project.scripts]
