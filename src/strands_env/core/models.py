@@ -117,6 +117,11 @@ def bedrock_model_factory(
 ) -> ModelFactory:
     """Return a factory that creates `BedrockModel` instances.
 
+    A single boto3 client (thread-safe) is created once from the session and
+    shared across all model instances.  ``BedrockModel`` doesn't accept a
+    pre-built client, so we extract it from a pilot instance and override
+    ``model.client`` on each subsequent one.
+
     Args:
         model_id: Bedrock model ID (e.g. "us.anthropic.claude-sonnet-4-20250514-v1:0").
         boto_session: Boto3 session for AWS credentials.
@@ -127,13 +132,23 @@ def bedrock_model_factory(
     if "max_new_tokens" in sampling_params:
         sampling_params["max_tokens"] = sampling_params.pop("max_new_tokens")
 
-    return lambda: BedrockModel(
+    model_kwargs = dict(
         model_id=model_id,
         boto_session=boto_session,
         boto_client_config=boto_client_config,
         streaming=False,
         **sampling_params,
     )
+
+    # Build one model to extract a properly configured, thread-safe client.
+    shared_client = BedrockModel(**model_kwargs).client
+
+    def factory() -> BedrockModel:
+        model = BedrockModel(**model_kwargs)
+        model.client = shared_client
+        return model
+
+    return factory
 
 
 # ---------------------------------------------------------------------------

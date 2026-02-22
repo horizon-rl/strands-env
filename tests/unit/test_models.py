@@ -107,6 +107,23 @@ class TestBedrockModelFactory:
         )
         assert DEFAULT_SAMPLING_PARAMS == original
 
+    @patch("strands_env.core.models.BedrockModel")
+    def test_shared_client_across_instances(self, mock_bedrock_cls):
+        """All models from the same factory should share a single boto3 client."""
+        import boto3
+
+        mock_client = MagicMock()
+        mock_bedrock_cls.return_value.client = mock_client
+
+        factory = bedrock_model_factory(
+            model_id="test",
+            boto_session=MagicMock(spec=boto3.Session),
+        )
+        model1 = factory()
+        model2 = factory()
+        assert model1.client is model2.client
+        assert model1.client is mock_client
+
 
 # ---------------------------------------------------------------------------
 # openai_model_factory
