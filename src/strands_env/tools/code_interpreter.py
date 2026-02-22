@@ -32,6 +32,9 @@ class CodeInterpreterToolkit:
 
     Provides `execute_code` and `execute_command` tools for running Python code
     and shell commands in a sandboxed environment.
+
+    Uses a single shared agentcore session through session ID. Call
+    `cleanup` when done to close the session.
     """
 
     def __init__(

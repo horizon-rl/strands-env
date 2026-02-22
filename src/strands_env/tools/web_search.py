@@ -42,6 +42,10 @@ class WebSearchToolkit:
     separate ``@tool`` method so the environment can pick which one to
     use.  Credentials are validated lazily — only when the corresponding
     tool method is actually called.
+
+    A single shared `aiohttp.ClientSession` (created lazily) and
+    an `asyncio.Semaphore` cap concurrent requests.  Call
+    `cleanup` when done to close the session.
     """
 
     def __init__(
