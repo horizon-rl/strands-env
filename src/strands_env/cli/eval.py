@@ -201,6 +201,14 @@ def list_cmd():
     default=False,
     help="Keep token-level observations in results.",
 )
+# Extra evaluator options (passed through as kwargs)
+@click.option(
+    "--eval-arg",
+    "eval_args",
+    type=str,
+    multiple=True,
+    help="Extra evaluator keyword argument as KEY=VALUE (repeatable). E.g., --eval-arg data_dir=/path/to/data.",
+)
 # Debug
 @click.option(
     "--debug",
@@ -236,6 +244,8 @@ def run_cmd(
     output: Path,
     save_interval: int,
     keep_tokens: bool,
+    # Extra evaluator options
+    eval_args: tuple[str, ...],
     debug: bool,
 ):
     """Run benchmark evaluation.
@@ -318,8 +328,8 @@ def run_cmd(
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create evaluator
-    evaluator = evaluator_cls(
+    # Build evaluator kwargs
+    evaluator_kwargs = dict(
         env_factory=env_factory,
         max_concurrency=eval_config.max_concurrency,
         n_samples_per_prompt=eval_config.n_samples_per_prompt,
@@ -327,6 +337,26 @@ def run_cmd(
         save_interval=eval_config.save_interval,
         keep_tokens=eval_config.keep_tokens,
     )
+
+    # Parse extra evaluator kwargs from --eval-arg KEY=VALUE
+    for arg in eval_args:
+        if "=" not in arg:
+            raise click.ClickException(f"Invalid --eval-arg format: '{arg}'. Expected KEY=VALUE.")
+        key, value = arg.split("=", 1)
+        key = key.strip()
+        # Auto-convert: int > float > comma-separated list > string
+        try:
+            value = int(value)
+        except ValueError:
+            try:
+                value = float(value)
+            except ValueError:
+                if "," in value:
+                    value = [s.strip() for s in value.split(",")]
+        evaluator_kwargs[key] = value
+
+    # Create evaluator
+    evaluator = evaluator_cls(**evaluator_kwargs)
 
     # Load dataset once (convert to list since we need to iterate twice if resolving system_prompt)
     actions = list(evaluator.load_dataset())

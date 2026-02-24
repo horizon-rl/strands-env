@@ -228,3 +228,11 @@ results/
 
 # Release notes drafts (copied to GitHub Releases)
 docs/releases/
+
+# IDE
+.idea/
+
+# Local plan/task/explanation docs
+plans.md
+implement_explanation/
+src/strands_env/task_test.md
