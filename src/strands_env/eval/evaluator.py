@@ -47,6 +47,9 @@ class EvalSample(BaseModel):
     step_result: StepResult
     """The result of the step (observation, reward, termination reason)."""
 
+    aborted: bool = False
+    """Whether this sample was aborted (excluded from metrics, retried on resume)."""
+
 
 class Evaluator:
     """Evaluator for running concurrent environment evaluations."""
@@ -89,6 +92,13 @@ class Evaluator:
         """Load dataset. Override in subclasses."""
         raise NotImplementedError("Subclasses must implement load_dataset()")
 
+    def validate_sample(self, sample: EvalSample) -> bool:
+        """Check if a completed sample is valid. Override with benchmark-specific logic.
+
+        Return False to mark the sample as aborted (excluded from metrics, retried on resume).
+        """
+        return True
+
     def get_metric_fns(self) -> list[MetricFn]:
         """Return metric functions for evaluation. Override to customize.
 
@@ -113,16 +123,21 @@ class Evaluator:
         self.results = defaultdict(list)
         self.completed_ids = set()
 
+        n_aborted = 0
         with open(self.output_path, encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line)
                 prompt_id = data.pop("prompt_id")
                 sample = EvalSample.model_validate(data)
+                if sample.aborted:
+                    n_aborted += 1
+                    continue  # Aborted samples are retried on resume
                 self.results[prompt_id].append(sample)
                 self.completed_ids.add(sample.action.task_context.id)
 
         total = sum(len(s) for s in self.results.values())
-        logger.info(f"Resumed {total} samples from {self.output_path}")
+        aborted_msg = f" (skipped {n_aborted} aborted for retry)" if n_aborted else ""
+        logger.info(f"Resumed {total} completed samples{aborted_msg} from {self.output_path}")
 
     def save_results(self) -> None:
         """Save all samples to checkpoint file."""
@@ -152,7 +167,11 @@ class Evaluator:
                 f"reward_info={reward_info} | "
                 f"metrics={step_result.observation.metrics}"
             )
-            return EvalSample(action=action, step_result=step_result)
+            sample = EvalSample(action=action, step_result=step_result)
+            sample.aborted = not self.validate_sample(sample)
+            if sample.aborted:
+                logger.warning(f"[{action.task_context.id}]: sample aborted by validate_sample")
+            return sample
         finally:
             await env.cleanup()
 
@@ -203,6 +222,8 @@ class Evaluator:
     def compute_metrics(self, results: dict[str, list[EvalSample]], log: bool = True) -> dict[str, float]:
         """Compute all metrics on results.
 
+        Aborted samples are excluded from metric computation.
+
         Args:
             results: Dict mapping prompt_id to sample results.
             log: Whether to log the metrics summary.
@@ -210,18 +231,25 @@ class Evaluator:
         Returns:
             Dict mapping metric names to values.
         """
+
+        # Exclude entire prompt if any sample is aborted (keeps n consistent for pass@k)
+        filtered = {pid: samples for pid, samples in results.items() if not any(s.aborted for s in samples)}
+
         metrics = {}
         for fn in self.get_metric_fns():
-            metrics.update(fn(results))
+            metrics.update(fn(filtered))
 
         if log and metrics:
-            n_prompts = len(results)
-            n_samples = sum(len(s) for s in results.values())
+            n_prompts = len(filtered)
+            n_skipped = len(results) - n_prompts
+            n_samples = sum(len(s) for s in filtered.values())
             name = self.benchmark_name or "Evaluation"
 
             # Build formatted output
             lines = [f"{'─' * 40}", f"  {name} Results", f"{'─' * 40}"]
             lines.append(f"  Prompts: {n_prompts}  Samples (n={self.n_samples_per_prompt}): {n_samples}")
+            if n_skipped:
+                lines.append(f"  Skipped {n_skipped} prompts due to aborted samples")
             lines.append("")
             for metric, value in sorted(metrics.items()):
                 lines.append(f"  {metric:<12} {value:>6.1%}")

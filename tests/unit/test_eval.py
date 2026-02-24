@@ -387,3 +387,132 @@ class TestAIME2024Evaluator:
 
         assert len(actions) == 1
         assert actions[0].task_context.id == "aime-2024_0"  # Uses index 0
+
+
+# ---------------------------------------------------------------------------
+# validate_sample / aborted
+# ---------------------------------------------------------------------------
+
+
+class TestValidateSample:
+    def _make_sample(self, reward: float, idx: int = 0, aborted: bool = False) -> EvalSample:
+        return EvalSample(
+            action=Action(message="q", task_context=TaskContext(id=f"sample_{idx}")),
+            step_result=StepResult(observation=Observation(), reward=RewardResult(reward=reward)),
+            aborted=aborted,
+        )
+
+    def test_default_returns_true(self):
+        """Default validate_sample always returns True."""
+
+        async def factory(action):
+            return MagicMock()
+
+        evaluator = Evaluator(env_factory=factory)
+        sample = self._make_sample(1.0)
+        assert evaluator.validate_sample(sample) is True
+
+    async def test_aborted_samples_excluded_from_metrics(self, tmp_path):
+        """Entire prompt is excluded from metrics if any sample is aborted."""
+        results = {
+            "p1": [self._make_sample(1.0, 0), self._make_sample(0.0, 1, aborted=True)],
+            "p2": [self._make_sample(1.0, 2), self._make_sample(1.0, 3)],
+            "p3": [self._make_sample(0.0, 4, aborted=True)],
+        }
+
+        async def factory(action):
+            return MagicMock()
+
+        evaluator = Evaluator(env_factory=factory, output_path=tmp_path / "results.jsonl")
+        metrics = evaluator.compute_metrics(results, log=False)
+
+        # p1 has one aborted sample -> entire prompt excluded
+        # p2 has no aborted samples (2 correct out of 2) -> pass@1 = 1.0
+        # p3 entirely aborted -> excluded
+        # Only p2 contributes -> pass@1 = 1.0
+        assert metrics["pass@1"] == 1.0
+
+    async def test_aborted_samples_retried_on_resume(self, tmp_path):
+        """Aborted samples are retried on resume (not added to completed_ids)."""
+        step_count = 0
+
+        class AbortingEvaluator(Evaluator):
+            def validate_sample(self, sample):
+                return False  # Abort everything
+
+        async def factory(action):
+            nonlocal step_count
+            step_count += 1
+            env = MagicMock()
+            env.reset = AsyncMock()
+            env.step = AsyncMock(return_value=StepResult(observation=Observation()))
+            env.cleanup = AsyncMock()
+            return env
+
+        output_path = tmp_path / "results.jsonl"
+
+        # First run
+        eval1 = AbortingEvaluator(env_factory=factory, output_path=output_path, save_interval=1)
+        results1 = await eval1.run([Action(message="q1", task_context=TaskContext(id="s1"))])
+        assert step_count == 1
+        assert results1["s1"][0].aborted is True
+
+        # Second run - s1 should be retried (aborted samples are not in completed_ids)
+        step_count = 0
+        eval2 = AbortingEvaluator(env_factory=factory, output_path=output_path, save_interval=1)
+        results2 = await eval2.run([Action(message="q1", task_context=TaskContext(id="s1"))])
+        assert step_count == 1  # Retried
+        assert results2["s1"][0].aborted is True
+
+    async def test_aborted_count_in_log(self, tmp_path, caplog):
+        """Skipped prompts and aborted count appear in metric log output."""
+        results = {
+            "p1": [self._make_sample(1.0, 0), self._make_sample(0.0, 1, aborted=True)],
+            "p2": [self._make_sample(1.0, 2)],
+        }
+
+        async def factory(action):
+            return MagicMock()
+
+        evaluator = Evaluator(env_factory=factory, output_path=tmp_path / "results.jsonl")
+
+        import logging
+
+        with caplog.at_level(logging.INFO):
+            evaluator.compute_metrics(results, log=True)
+
+        assert "Skipped 1 prompts due to aborted samples" in caplog.text
+
+    async def test_custom_validate_sample(self, tmp_path):
+        """Subclass can override validate_sample to abort specific samples."""
+
+        class RewardCheckEvaluator(Evaluator):
+            def validate_sample(self, sample):
+                return sample.step_result.reward is not None
+
+        call_count = 0
+
+        async def factory(action):
+            nonlocal call_count
+            call_count += 1
+            reward = RewardResult(reward=1.0) if call_count == 2 else None
+            env = MagicMock()
+            env.reset = AsyncMock()
+            env.step = AsyncMock(return_value=StepResult(observation=Observation(), reward=reward))
+            env.cleanup = AsyncMock()
+            return env
+
+        evaluator = RewardCheckEvaluator(
+            env_factory=factory,
+            n_samples_per_prompt=2,
+            max_concurrency=1,
+            output_path=tmp_path / "results.jsonl",
+        )
+        results = await evaluator.run([Action(message="q", task_context=TaskContext(id="p1"))])
+
+        assert len(results["p1"]) == 2
+        aborted = [s for s in results["p1"] if s.aborted]
+        valid = [s for s in results["p1"] if not s.aborted]
+        assert len(aborted) == 1
+        assert len(valid) == 1
+        assert valid[0].step_result.reward.reward == 1.0
