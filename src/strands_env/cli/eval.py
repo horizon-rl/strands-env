@@ -337,9 +337,7 @@ def run_cmd(
         # Use first action from dataset to create environment and get system_prompt
         async def get_env_system_prompt():
             env = await env_factory(actions[0])
-            prompt = env.system_prompt
-            await env.cleanup()
-            return prompt
+            return env.system_prompt
 
         resolved_system_prompt = asyncio.run(get_env_system_prompt())
 
