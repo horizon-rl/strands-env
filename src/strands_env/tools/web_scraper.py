@@ -34,9 +34,7 @@ import logging
 from typing import TYPE_CHECKING
 
 import aiohttp
-import html2text
 import tiktoken
-import trafilatura
 from strands import tool
 
 from strands_env.core import Environment
@@ -138,6 +136,8 @@ class WebScraperToolkit:
         A fresh ``html2text`` instance is created per call for thread safety
         (this method runs in a thread pool via ``asyncio.to_thread``).
         """
+        import html2text
+        import trafilatura
 
         def _truncate(text: str) -> str:
             tokens = self._encoding.encode(text)
