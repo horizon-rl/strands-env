@@ -64,7 +64,15 @@ class Environment:
         self.system_prompt = system_prompt or (path.read_text() if path and path.exists() else None)
 
     async def reset(self) -> None:
-        """Reset for a new episode. Override for environment-specific init."""
+        """Reset for a new episode. Override for environment-specific init.
+
+        This is the right place for resource-heavy or async initialization
+        (e.g., spinning up containers, creating sessions, connecting to services).
+        Keep ``__init__`` limited to storing config and lightweight state —
+        it is synchronous and cannot ``await``.
+
+        Paired with ``cleanup`` which tears down what ``reset`` sets up.
+        """
         pass
 
     async def step(self, action: Action) -> StepResult:
