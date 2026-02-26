@@ -52,12 +52,14 @@ class Environment:
         reward_fn: RewardFunction | None = None,
         max_tool_iters: int | None = None,
         max_tool_calls: int | None = None,
+        max_tool_calls_per_turn: int | None = None,
         verbose: bool = False,
     ):
         self.model_factory = model_factory
         self.reward_fn = reward_fn
         self.max_tool_iters = max_tool_iters
         self.max_tool_calls = max_tool_calls
+        self.max_tool_calls_per_turn = max_tool_calls_per_turn
         self.verbose = verbose
 
         path = self.default_system_prompt_path
@@ -81,6 +83,7 @@ class Environment:
         tool_limiter = ToolLimiter(
             max_tool_iters=self.max_tool_iters,
             max_tool_calls=self.max_tool_calls,
+            max_tool_calls_per_turn=self.max_tool_calls_per_turn,
         )
         model = self.model_factory()
         model.token_manager = TokenManager()
@@ -107,6 +110,7 @@ class Environment:
             "message_count": len(step_messages),
             "tool_iters": tool_limiter.tool_iter_count,
             "tool_calls": tool_limiter.tool_call_count,
+            "cancelled_tool_calls": tool_limiter.cancelled_tool_call_count,
             **self.compute_metrics(agent.event_loop_metrics, tool_parse_errors=tool_parse_errors),
         }
         observation = Observation(messages=step_messages, tokens=token_obs, metrics=metrics)

@@ -70,6 +70,7 @@ class EnvConfig:
     system_prompt_path: Path | None = None
     max_tool_iters: int | None = None
     max_tool_calls: int | None = None
+    max_tool_calls_per_turn: int | None = None
     verbose: bool = False
 
     @property
