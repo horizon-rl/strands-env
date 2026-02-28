@@ -43,7 +43,7 @@ class SimpleMathEvaluator(Evaluator):
         """
         # Example problems - replace with your dataset
         problems = [
-            {"id": "prob_1", "prompt": "What is 2 + 3?", "answer": "5"},
+            {"id": "prob_1", "prompt": "Compute 2 + 3 and 29 * 12, respectively, and add the results.", "answer": "353"},
             {"id": "prob_2", "prompt": "What is 7 * 8?", "answer": "56"},
             {"id": "prob_3", "prompt": "What is 100 / 4?", "answer": "25"},
         ]
