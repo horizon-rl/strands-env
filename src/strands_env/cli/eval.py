@@ -170,10 +170,10 @@ def list_cmd():
     help="Maximum tool calls per step.",
 )
 @click.option(
-    "--max-tool-calls-per-turn",
+    "--max-parallel-tool-calls",
     type=int,
     default=None,
-    help="Maximum tool calls per turn (excess are cancelled, not executed).",
+    help="Maximum parallel tool calls per model response (excess are cancelled, not executed).",
 )
 # Eval settings
 @click.option(
@@ -236,7 +236,7 @@ def run_cmd(
     system_prompt: Path | None,
     max_tool_iters: int | None,
     max_tool_calls: int | None,
-    max_tool_calls_per_turn: int | None,
+    max_parallel_tool_calls: int | None,
     # Eval
     n_samples_per_prompt: int,
     max_concurrency: int,
@@ -300,7 +300,7 @@ def run_cmd(
         system_prompt_path=system_prompt,
         max_tool_iters=max_tool_iters,
         max_tool_calls=max_tool_calls,
-        max_tool_calls_per_turn=max_tool_calls_per_turn,
+        max_parallel_tool_calls=max_parallel_tool_calls,
         verbose=False,  # Always False for eval
     )
     eval_config = EvalConfig(
@@ -359,7 +359,7 @@ def run_cmd(
             "system_prompt": resolved_system_prompt,
             "max_tool_iters": env_config.max_tool_iters,
             "max_tool_calls": env_config.max_tool_calls,
-            "max_tool_calls_per_turn": env_config.max_tool_calls_per_turn,
+            "max_parallel_tool_calls": env_config.max_parallel_tool_calls,
         },
         "eval": eval_config.to_dict(),
     }

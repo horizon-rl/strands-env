@@ -59,7 +59,7 @@ class TestEnvironmentInit:
         env = Environment(model_factory=model_factory)
         assert env.max_tool_iters is None
         assert env.max_tool_calls is None
-        assert env.max_tool_calls_per_turn is None
+        assert env.max_parallel_tool_calls is None
         assert env.verbose is False
         assert env.system_prompt is None
         assert env.reward_fn is None
