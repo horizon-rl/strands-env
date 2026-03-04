@@ -45,6 +45,7 @@ class TerminalBenchRewardFunction(RewardFunction):
 
     async def _run_verification(self) -> float:
         """Upload tests, execute `test.sh`, download results, and parse reward."""
+        assert self._env.docker_env is not None, "Docker environment not initialized"
         docker_env = self._env.docker_env
         task_paths = self._env.task_paths
         trial_paths = self._env.trial_paths

@@ -20,6 +20,7 @@ import logging
 from functools import lru_cache
 
 import boto3
+from botocore.client import BaseClient
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ def get_client(
     profile_name: str | None = None,
     role_arn: str | None = None,
     session_name: str = "strands-env",
-):
+) -> BaseClient:
     """Get a cached boto3 client.
 
     Each client gets its own dedicated boto3 Session, avoiding the thread-safety

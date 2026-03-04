@@ -19,7 +19,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, cast
 
 import click
 
@@ -97,7 +97,7 @@ def load_env_hook(path: Path) -> EnvFactoryCreator:
             "      return env_factory"
         )
 
-    return module.create_env_factory
+    return cast(EnvFactoryCreator, module.create_env_factory)
 
 
 def load_evaluator_hook(path: Path) -> EvaluatorClass:
@@ -284,7 +284,7 @@ def _build_bedrock_model_factory(config: ModelConfig, sampling: dict) -> ModelFa
         raise click.ClickException("--model-id is required for Bedrock backend")
 
     boto_session = get_session(
-        region=config.region,
+        region=config.region or "us-east-1",
         profile_name=config.profile_name,
         role_arn=config.role_arn,
     )

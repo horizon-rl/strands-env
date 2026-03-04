@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Sequence
 
 from strands import Agent
 from strands.agent.conversation_manager import ConversationManager, NullConversationManager
@@ -86,7 +86,6 @@ class Environment:
             max_parallel_tool_calls=self.max_parallel_tool_calls,
         )
         model = self.model_factory()
-        model.token_manager = TokenManager()
         agent = Agent(
             model=model,
             messages=list(conversation_history),
@@ -98,13 +97,14 @@ class Environment:
         )
         error = None
         try:
-            await agent.invoke_async(action.message)
+            message = action.message if isinstance(action.message, str) else action.message["content"]
+            await agent.invoke_async(message)
         except Exception as e:
             error = e
         termination_reason = TerminationReason.from_error(error)
 
         step_messages = list(agent.messages)[len(conversation_history) :]
-        token_obs = TokenObservation.from_token_manager(agent.model.token_manager)
+        token_obs = TokenObservation.from_token_manager(getattr(agent.model, "token_manager", TokenManager()))
         tool_parse_errors = getattr(agent.model, "tool_parse_errors", None)
         metrics = {
             "message_count": len(step_messages),
@@ -143,7 +143,7 @@ class Environment:
     ) -> dict[str, Any]:
         """Extract metrics from the event loop. Override to add custom metrics."""
 
-        def _summarize(counts: tuple | list, round_digits: int = 1) -> dict[str, int | float]:
+        def _summarize(counts: Sequence[Any], round_digits: int = 1) -> dict[str, int | float]:
             return {
                 "total": round(sum(counts), round_digits),
                 "max": round(max(counts), round_digits),

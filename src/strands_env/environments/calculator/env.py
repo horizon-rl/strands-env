@@ -28,5 +28,5 @@ class CalculatorEnv(Environment):
     default_system_prompt_path = Path(__file__).parent / "system_prompt.md"
 
     @override
-    def get_tools(self):
+    def get_tools(self) -> list:
         return [calculator]

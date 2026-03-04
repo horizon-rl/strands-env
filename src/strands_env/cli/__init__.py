@@ -22,7 +22,7 @@ from .eval import eval_group
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """strands-env: cli main entrypoint."""
     pass
 
@@ -31,7 +31,7 @@ def cli():
 cli.add_command(eval_group)
 
 
-def main():
+def main() -> None:
     cli()
 
 

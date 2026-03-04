@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from strands.tools.mcp import MCPClient
 from typing_extensions import override
@@ -49,7 +49,7 @@ class MCPEnvironment(Environment):
         self,
         *,
         mcp_client: MCPClient | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self._mcp_client = mcp_client

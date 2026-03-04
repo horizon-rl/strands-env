@@ -82,12 +82,12 @@ class MathVerifyReward(RewardFunction):
 
     def _parse(self, text: str) -> list:
         """Parse text into math expressions. Raises on error or timeout."""
-        return parse(
+        return list(parse(
             text,
             extraction_config=_EXTRACTION_CONFIG,
             parsing_timeout=self.parse_timeout,
             raise_on_error=True,
-        )
+        ))
 
     @override
     async def compute(self, action: Action, step_result: StepResult) -> RewardResult:

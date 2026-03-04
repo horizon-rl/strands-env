@@ -81,7 +81,8 @@ class TerminalBenchEvaluator(Evaluator):
     @override
     async def evaluate_sample(self, action: Action) -> EvalSample:
         """Override to create sample-specific output directories for pass@k."""
-        ctx: TerminalBenchTaskContext = action.task_context
+        assert isinstance(action.task_context, TerminalBenchTaskContext)
+        ctx = action.task_context
         sample_idx = int(ctx.id.rsplit("_", 1)[1]) if "_" in ctx.id else 0
         ctx.config.trial_dir = self.output_path.parent / ctx.config.task_id / str(sample_idx)
 

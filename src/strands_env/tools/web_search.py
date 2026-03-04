@@ -171,7 +171,7 @@ class WebSearchToolkit:
             "key": os.environ["GOOGLE_API_KEY"],
             "cx": os.environ["GOOGLE_CSE_ID"],
             "q": query,
-            "num": top_k,
+            "num": str(top_k),
         }
 
         try:

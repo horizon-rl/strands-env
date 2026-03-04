@@ -54,4 +54,4 @@ def get_model_id(base_url: str, timeout: float = 5.0) -> str:
     """
     response = httpx.get(f"{base_url}/get_model_info", timeout=timeout)
     response.raise_for_status()
-    return response.json()["model_path"]
+    return str(response.json()["model_path"])

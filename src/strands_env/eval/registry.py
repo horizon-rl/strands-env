@@ -23,7 +23,7 @@ from __future__ import annotations
 import importlib
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from .evaluator import Evaluator
@@ -37,7 +37,7 @@ _UNAVAILABLE: dict[str, str] = {}
 _DISCOVERED = False
 
 
-def register_eval(name: str):
+def register_eval(name: str) -> Callable[[type[Evaluator]], type[Evaluator]]:
     """Decorator to register a benchmark evaluator.
 
     Example:

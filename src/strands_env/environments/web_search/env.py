@@ -99,9 +99,10 @@ class WebSearchEnv(Environment):
             )
 
     @override
-    def get_tools(self):
+    def get_tools(self) -> list:
         tools = [getattr(self.search_toolkit, self._search_tool_name)]
         if self.scraper_toolkit is not None:
+            assert self._scrape_tool_name is not None
             tools.append(getattr(self.scraper_toolkit, self._scrape_tool_name))
         return tools
 

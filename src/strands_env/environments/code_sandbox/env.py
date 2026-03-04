@@ -29,7 +29,8 @@ from strands_env.utils.aws import get_client
 if TYPE_CHECKING:
     from botocore.client import BaseClient
 
-    from strands_env.core.types import ModelFactory, RewardFunction
+    from strands_env.core.models import ModelFactory
+    from strands_env.core.types import RewardFunction
 
 
 class CodeMode(str, Enum):
@@ -92,9 +93,9 @@ class CodeSandboxEnv(Environment):
         self._toolkit = CodeInterpreterToolkit(client=client or get_client(service_name="bedrock-agentcore"))
 
     @override
-    def get_tools(self):
+    def get_tools(self) -> list:
         """Return tools based on configured mode."""
-        tool_map = {
+        tool_map: dict[CodeMode, list] = {
             CodeMode.CODE: [self._toolkit.execute_code],
             CodeMode.TERMINAL: [self._toolkit.execute_command],
             CodeMode.CODE_AND_TERMINAL: [self._toolkit.execute_code, self._toolkit.execute_command],

@@ -48,6 +48,7 @@ import httpx
 from strands.models import Model
 from strands.models.bedrock import BedrockModel
 from strands.models.openai import OpenAIModel
+from strands.types.content import Messages
 from strands_sglang import SGLangClient, SGLangModel
 from strands_sglang.tool_parsers import HermesToolParser, ToolParser
 from transformers import PreTrainedTokenizerBase
@@ -195,7 +196,7 @@ def openai_model_factory(
 # ---------------------------------------------------------------------------
 
 
-def _get_kimi_model_class():
+def _get_kimi_model_class() -> type:
     """Return a LiteLLMModel subclass that preserves reasoning_content for Moonshot.
 
     Both OpenAIModel and LiteLLMModel strip reasoningContent in _format_regular_messages,
@@ -205,7 +206,7 @@ def _get_kimi_model_class():
 
     class KimiModel(LiteLLMModel):
         @classmethod
-        def _format_regular_messages(cls, messages, **kwargs):
+        def _format_regular_messages(cls, messages: Messages, **kwargs: Any) -> list[dict[str, Any]]:
             # Extract reasoning text before super() strips reasoningContent blocks
             reasoning_map: dict[int, str] = {}
             for i, message in enumerate(messages):
