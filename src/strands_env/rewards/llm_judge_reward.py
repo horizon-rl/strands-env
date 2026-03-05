@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 from strands import Agent
@@ -28,8 +29,11 @@ from strands_env.core.types import Action, RewardFunction, RewardResult, StepRes
 
 logger = logging.getLogger(__name__)
 
+#: TypeVar for the judgment model type. Defaults to `BaseModel` when unparameterized.
+JudgmentFormat = TypeVar("JudgmentFormat", bound=BaseModel)
 
-class LLMJudgeReward(RewardFunction):
+
+class LLMJudgeReward(RewardFunction, Generic[JudgmentFormat]):
     r"""Abstract base for LLM-as-judge reward functions.
 
     Subclasses set `judgment_format` class attribute and implement
@@ -46,13 +50,13 @@ class LLMJudgeReward(RewardFunction):
 
     Example (structured output)::
 
-        class SimpleQAReward(LLMJudgeReward):
+        class SimpleQAReward(LLMJudgeReward[SimpleQAJudgment]):
             judgment_format = SimpleQAJudgment
 
             async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
                 return f"Question: {action.message}\\nAnswer: {step_result.observation.final_response}"
 
-            async def get_reward(self, judgment: BaseModel | str) -> float:
+            async def get_reward(self, judgment: SimpleQAJudgment | str) -> float:
                 return {"correct": 1.0, "incorrect": 0.0, "not_attempted": 0.0}[judgment.grade]
 
     Example (text output)::
@@ -69,7 +73,7 @@ class LLMJudgeReward(RewardFunction):
     """
 
     #: Pydantic model for structured output. Subclasses override to enable structured output.
-    judgment_format: type[BaseModel] | None = None
+    judgment_format: type[JudgmentFormat] | None = None
 
     def __init__(
         self,
@@ -89,7 +93,7 @@ class LLMJudgeReward(RewardFunction):
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    async def get_reward(self, judgment: BaseModel | str) -> float:
+    async def get_reward(self, judgment: JudgmentFormat | str) -> float:
         """Get reward from judgment (structured or text)."""
         raise NotImplementedError("Subclasses must implement this method.")
 
@@ -99,13 +103,16 @@ class LLMJudgeReward(RewardFunction):
             prompt = await self.get_judge_prompt(action, step_result)
         except Exception as e:
             logger.error("Judge prompt rendering failed: %s", e)
-            return RewardResult(reward=self.default_reward, info={"reason": "prompt_error", "error": str(e)})
+            return RewardResult(
+                reward=self.default_reward,
+                info={"status": "error", "error_type": "prompt_error", "error": str(e)},
+            )
 
         agent = Agent(model=self.judge_model, system_prompt=self.system_prompt, tools=[])
 
         try:
             if self.judgment_format is not None:
-                judgment: BaseModel | str = await agent.structured_output_async(
+                judgment: JudgmentFormat | str = await agent.structured_output_async(
                     output_model=self.judgment_format, prompt=prompt
                 )
             else:
@@ -113,14 +120,19 @@ class LLMJudgeReward(RewardFunction):
                 judgment = result.message.get("content", [{}])[0].get("text", "")
         except Exception as e:
             logger.error("Judge model invocation failed: %s", e)
-            return RewardResult(reward=self.default_reward, info={"reason": "judge_error", "error": str(e)})
+            return RewardResult(
+                reward=self.default_reward,
+                info={"status": "error", "error_type": "judge_error", "error": str(e)},
+            )
 
         try:
             reward = await self.get_reward(judgment)
         except Exception as e:
             logger.error("Reward computation for judgment failed: %s", e)
-            return RewardResult(reward=self.default_reward, info={"reason": "reward_error", "error": str(e)})
+            return RewardResult(
+                reward=self.default_reward,
+                info={"status": "error", "error_type": "reward_error", "error": str(e)},
+            )
 
-        if isinstance(judgment, BaseModel):
-            return RewardResult(reward=reward, info={"judgment": judgment.model_dump()})
-        return RewardResult(reward=reward, info={"judgment": judgment})
+        judgment_data = judgment.model_dump() if isinstance(judgment, BaseModel) else judgment
+        return RewardResult(reward=reward, info={"status": "success", "judgment": judgment_data})

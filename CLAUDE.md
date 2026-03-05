@@ -80,13 +80,15 @@ The package lives in `src/strands_env/` with these modules:
 
 **benchmarks/** — Benchmark evaluator modules. Each module uses `@register_eval` decorator. Auto-discovered on first registry access; missing dependencies cause module to be skipped with warning.
 
-**benchmarks/aime.py** — `AIMEEvaluator` base class for AIME benchmarks. `AIME2024Evaluator` and `AIME2025Evaluator` registered as separate benchmarks with different dataset paths.
+**benchmarks/aime.py** — `AIMEEvaluator` base class for AIME benchmarks. `AIME2024Evaluator`, `AIME2025Evaluator`, and `AIME2026Evaluator` registered as separate benchmarks with different dataset paths.
+
+**benchmarks/simpleqa_verified.py** — `SimpleQAVerifiedEvaluator` for the [google/simpleqa-verified](https://huggingface.co/datasets/google/simpleqa-verified) factuality benchmark. `SimpleQAJudgment` Pydantic model for structured grading (CORRECT/INCORRECT/NOT_ATTEMPTED). `SimpleQAReward(LLMJudgeReward[SimpleQAJudgment])` uses OpenAI's grading prompt template.
 
 ### `utils/`
 
 **sglang.py** — Sync SGLang server utilities. `check_server_health(base_url)` for early validation. `get_model_id(base_url)` to query the served model. Client/tokenizer caching has moved to `strands_sglang.utils`.
 
-**aws.py** — AWS boto3 session caching. `get_session(region, profile_name, role_arn)` with `@cache`. If `role_arn` provided, uses `RefreshableCredentials` for programmatic role assumption with auto-refresh; otherwise returns basic session.
+**aws.py** — AWS boto3 session and client utilities. `get_session(region, profile_name, role_arn)` creates a **fresh** session each call (sessions are not thread-safe). `get_client(service_name, ...)` with `@cache` returns a cached, thread-safe boto3 client (each client gets its own dedicated session). If `role_arn` provided, uses `RefreshableCredentials` for programmatic role assumption with auto-refresh.
 
 ### `tools/`
 
@@ -98,7 +100,7 @@ The package lives in `src/strands_env/` with these modules:
 
 ### `rewards/`
 
-**llm_judge_reward.py** — `LLMJudgeReward` abstract base for LLM-as-judge rewards. Set class attribute `judgment_format` to a Pydantic model for structured output or leave `None` for raw text. Subclasses implement `get_judge_prompt()` and `get_reward()`. Includes error handling with `default_reward` fallback.
+**llm_judge_reward.py** — `LLMJudgeReward` abstract base for LLM-as-judge rewards, generic over `JudgmentFormat` (a `TypeVar` bound to `BaseModel`). Subclasses parameterize via `LLMJudgeReward[MyJudgment]` to get typed `get_reward()` signatures. Set class attribute `judgment_format` to a Pydantic model for structured output or leave `None` for raw text. Subclasses implement `get_judge_prompt()` and `get_reward()`. Includes error handling with `default_reward` fallback.
 
 **math_verify_reward.py** — `MathVerifyReward` gives reward 1.0 if the model's `\boxed{}` answer is mathematically equivalent to ground truth. Uses `math_verify` library for SymPy-based symbolic equivalence (fractions, sets, simplification). Parses only the tail of the response to avoid long chain-of-thought.
 
@@ -123,7 +125,7 @@ The package lives in `src/strands_env/` with these modules:
 
 ### Key Design Decisions
 
-- **Factory pattern**: `ModelFactory` returns lambdas (not Model instances) so each `step()` gets a fresh model with clean token tracking state.
+- **Factory pattern over raw Model**: Always use our `ModelFactory` functions (`sglang_model_factory`, `bedrock_model_factory`, etc.) instead of constructing Strands `Model` classes directly. The factories handle per-backend concerns that raw constructors don't: `max_new_tokens` → `max_tokens` remapping, shared boto3 client reuse across instances, SGLang client/tokenizer wiring, and consistent sampling param handling. `ModelFactory` returns lambdas (not Model instances) so each `step()` gets a fresh model with clean token tracking state.
 - **TITO token tracking**: `TokenManager` on SGLang models captures exact token IDs and logprobs during generation. `TokenObservation.from_token_manager()` extracts prompt/rollout split. Non-SGLang models get an empty `TokenManager` (returns `None` from `from_token_manager`).
 - **`list()` copies**: Tools, hooks, and messages are copied via `list()` before passing to Agent to prevent cross-step mutation.
 - **ToolLimiter**: Always prepended to hooks list. Supports `max_tool_iters` and `max_tool_calls`. Raises `MaxToolIterationsReachedError` or `MaxToolCallsReachedError` which `TerminationReason.from_error()` maps to `MAX_TOOL_ITERATIONS_REACHED` or `MAX_TOOL_CALLS_REACHED`.

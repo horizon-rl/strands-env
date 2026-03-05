@@ -14,10 +14,11 @@
 
 """Reward functions for Strands Agents Environments."""
 
-from .llm_judge_reward import LLMJudgeReward
+from .llm_judge_reward import JudgmentFormat, LLMJudgeReward
 from .math_verify_reward import MathVerifyReward
 
 __all__ = [
+    "JudgmentFormat",
     "LLMJudgeReward",
     "MathVerifyReward",
 ]
