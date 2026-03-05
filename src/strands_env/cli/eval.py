@@ -196,6 +196,12 @@ def list_cmd() -> None:
     help="Output directory. Defaults to {benchmark}_eval/.",
 )
 @click.option(
+    "--max-samples",
+    type=int,
+    default=None,
+    help="Maximum number of dataset samples to evaluate (useful for debugging).",
+)
+@click.option(
     "--save-interval",
     type=int,
     default=10,
@@ -240,6 +246,7 @@ def run_cmd(
     # Eval
     n_samples_per_prompt: int,
     max_concurrency: int,
+    max_samples: int | None,
     output: Path,
     save_interval: int,
     keep_tokens: bool,
@@ -339,6 +346,8 @@ def run_cmd(
 
     # Load dataset once (convert to list since we need to iterate twice if resolving system_prompt)
     actions = list(evaluator.load_dataset())
+    if max_samples is not None:
+        actions = actions[:max_samples]
 
     # Resolve system_prompt from environment if not provided via CLI
     resolved_system_prompt = env_config.system_prompt
@@ -372,6 +381,7 @@ def run_cmd(
     click.echo(f"Running {benchmark_name} evaluation with {env_path}")
     click.echo(f"  Backend: {backend}, Model: {model_id or '(auto-detect)'}")
     click.echo(f"  Samples per prompt: {n_samples_per_prompt}, Concurrency: {max_concurrency}")
+    click.echo(f"  Dataset samples: {len(actions)}{' (limited by --max-samples)' if max_samples is not None else ''}")
     click.echo(f"  Output directory: {output_dir}")
 
     results = asyncio.run(evaluator.run(actions))

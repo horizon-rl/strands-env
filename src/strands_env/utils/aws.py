@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_session(
-    region: str = "us-east-1",
+    region: str = "us-west-2",
     profile_name: str | None = None,
     role_arn: str | None = None,
     session_name: str = "strands-env",

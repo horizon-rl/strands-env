@@ -21,68 +21,20 @@ This example demonstrates:
 
 Usage:
     python examples/bedrock_judge_demo.py
-    python examples/bedrock_judge_demo.py --model-id us.anthropic.claude-sonnet-4-20250514
+    python examples/bedrock_judge_demo.py --model-id us.anthropic.claude-sonnet-4-20250514-v1:0
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Literal
 
 import boto3
 import click
-from pydantic import BaseModel, Field
 from strands.models.bedrock import BedrockModel
 
 from strands_env.core.types import Action, Observation, StepResult, TaskContext, TerminationReason
-from strands_env.rewards.llm_judge_reward import LLMJudgeReward
-
-# ---------------------------------------------------------------------------
-# Judgment schema
-# ---------------------------------------------------------------------------
-
-
-class SimpleQAJudgment(BaseModel):
-    """Judgment for simple QA evaluation."""
-
-    grade: Literal["correct", "incorrect", "not_attempted"] = Field(
-        description="correct: answer matches ground truth; incorrect: answer is wrong; not_attempted: no answer given"
-    )
-    explanation: str = Field(description="Brief explanation of the grade")
-
-
-# ---------------------------------------------------------------------------
-# Custom reward function
-# ---------------------------------------------------------------------------
-
-
-class SimpleQAReward(LLMJudgeReward):
-    """LLM-as-judge reward for simple QA tasks."""
-
-    judgment_format = SimpleQAJudgment
-
-    async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
-        question = action.message if isinstance(action.message, str) else str(action.message)
-        ground_truth = action.task_context.ground_truth or "(not provided)"
-        response = step_result.observation.final_response or "(no response)"
-
-        return f"""Evaluate if the response correctly answers the question.
-
-Question: {question}
-
-Ground Truth Answer: {ground_truth}
-
-Response to Evaluate:
-{response}
-
-Judge whether the response is correct, incorrect, or not_attempted."""
-
-    async def get_reward(self, judgment: BaseModel | str) -> float:
-        if isinstance(judgment, SimpleQAJudgment):
-            return {"correct": 1.0, "incorrect": 0.0, "not_attempted": 0.0}[judgment.grade]
-        return 0.0
-
+from strands_env.eval.benchmarks.simpleqa_verified import SimpleQAReward
 
 # ---------------------------------------------------------------------------
 # Demo
@@ -132,10 +84,11 @@ async def run_demo(model_id: str) -> None:
         result = await reward_fn.compute(action, step_result)
 
         click.echo(f"Reward:       {result.reward}")
-        if "judgment" in result.info:
+        if result.info.get("status") == "success":
             judgment = result.info["judgment"]
             click.echo(f"Grade:        {judgment.get('grade', 'N/A')}")
-            click.echo(f"Explanation:  {judgment.get('explanation', 'N/A')}")
+        else:
+            click.echo(f"Error:        {result.info.get('error_type')}: {result.info.get('error')}")
 
 
 @click.command()
