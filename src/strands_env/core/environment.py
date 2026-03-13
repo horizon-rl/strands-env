@@ -184,5 +184,8 @@ class Environment:
             "input_tokens": _summarize(input_counts) if input_counts else None,
             "output_tokens": _summarize(output_counts) if output_counts else None,
             "cache_read_input_tokens": _summarize(cache_read_counts) if any(cache_read_counts) else None,
+            "cache_hit_rate": round(sum(cache_read_counts) / sum(input_counts), 4)
+            if input_counts and cache_read_counts and sum(input_counts) > 0
+            else None,
             "per_tool_metrics": per_tool_metrics or None,
         }
