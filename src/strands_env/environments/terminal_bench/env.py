@@ -44,7 +44,7 @@ class TerminalBenchConfig:
 
     Attributes:
         task_id: Unique identifier for the task.
-        task_dir: Path to task directory containing Dockerfile, tests/, environment/.
+        task_dir: Path to task directory containing `Dockerfile`, `tests/`, `environment/`.
         trial_dir: Path to trial output directory for storing results.
         env_config: Harbor EnvironmentConfig for Docker setup.
         timeout_s: Timeout in seconds for test execution.

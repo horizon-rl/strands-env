@@ -70,12 +70,12 @@ class Environment:
     async def reset(self) -> None:
         """Reset for a new episode. Override for environment-specific init.
 
-        This is the right place for resource-heavy or async initialization
-        (e.g., spinning up containers, creating sessions, connecting to services).
-        Keep `__init__` limited to storing config and lightweight state —
-        it is synchronous and cannot `await`.
-
-        Paired with `cleanup` which tears down what `reset` sets up.
+        Notes:
+            - This is the right place for resource-heavy or async initialization
+            (e.g., spinning up containers, creating sessions, connecting to services).
+            - Keep `__init__` limited to storing config and lightweight state —
+            it is synchronous and cannot `await`.
+            - Paired with `cleanup` which tears down what `reset` sets up.
         """
         pass
 

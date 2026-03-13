@@ -38,14 +38,11 @@ GOOGLE_CUSTOM_SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
 class WebSearchToolkit:
     """Web search tools supporting different search providers.
 
-    Supports multiple search providers.  Each provider is exposed as a
-    separate `@tool` method so the environment can pick which one to
-    use.  Credentials are validated lazily — only when the corresponding
-    tool method is actually called.
-
-    A single shared `aiohttp.ClientSession` (created lazily) and
-    an `asyncio.Semaphore` cap concurrent requests.  Call
-    `cleanup` when done to close the session.
+    Notes:
+        - Each provider is exposed as a separate `@tool` method so the environment
+          can pick which one to use. Credentials are validated lazily via `@requires_env`.
+        - A single shared `aiohttp.ClientSession` (created lazily) and an
+          `asyncio.Semaphore` cap concurrent requests. Call `cleanup` when done.
     """
 
     def __init__(
@@ -56,10 +53,6 @@ class WebSearchToolkit:
         blocked_domains: list[str] | None = None,
     ):
         """Initialize a `WebSearchToolkit` instance.
-
-        All credential parameters are optional.  When `None`, the
-        corresponding environment variable is checked.  Validation only
-        happens when a tool method that needs the credential is called.
 
         Args:
             timeout: HTTP request timeout in seconds.
@@ -96,7 +89,8 @@ class WebSearchToolkit:
     ) -> str:
         """Format a list of search result dicts into a numbered text block.
 
-        This is a hook method that can be overridden by subclasses to customize the formatting.
+        Notes:
+            Hook method — override in subclasses to customize formatting.
         """
         if not items:
             return "No results found."

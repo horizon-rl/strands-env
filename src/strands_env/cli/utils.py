@@ -56,12 +56,6 @@ def _load_hook_module(path: Path, hook_name: str) -> ModuleType:
     Args:
         path: Path to the Python file.
         hook_name: Name for the module (used in error messages).
-
-    Returns:
-        The loaded module.
-
-    Raises:
-        click.ClickException: If the file cannot be loaded.
     """
     spec = importlib.util.spec_from_file_location(hook_name, path)
     if spec is None or spec.loader is None:
@@ -73,18 +67,10 @@ def _load_hook_module(path: Path, hook_name: str) -> ModuleType:
 
 
 def load_env_hook(path: Path) -> EnvFactoryCreator:
-    """Load environment hook file and return create_env_factory function.
+    """Load environment hook file and return `create_env_factory` function.
 
-    The hook file must export a `create_env_factory(model_factory, env_config)` function.
-
-    Args:
-        path: Path to the Python hook file.
-
-    Returns:
-        The create_env_factory function from the hook file.
-
-    Raises:
-        click.ClickException: If the file cannot be loaded or doesn't export the function.
+    Notes:
+        The hook file must export a `create_env_factory(model_factory, env_config)` function.
     """
     module = _load_hook_module(path, "env_hook")
 
@@ -107,18 +93,10 @@ def load_env_hook(path: Path) -> EnvFactoryCreator:
 
 
 def load_evaluator_hook(path: Path) -> EvaluatorClass:
-    """Load evaluator hook file and return the Evaluator class.
+    """Load evaluator hook file and return the `Evaluator` class.
 
-    The hook file must export an `EvaluatorClass` that extends `Evaluator`.
-
-    Args:
-        path: Path to the Python hook file.
-
-    Returns:
-        The Evaluator subclass from the hook file.
-
-    Raises:
-        click.ClickException: If the file cannot be loaded or doesn't export the class.
+    Notes:
+        The hook file must export an `EvaluatorClass` that is an `Evaluator` subclass.
     """
     from strands_env.eval import Evaluator
 
@@ -150,13 +128,10 @@ def load_tool_parser(tool_parser_arg: str | None) -> ToolParser | None:
     """Load tool parser from name or hook file path.
 
     Args:
-        tool_parser_arg: Either a parser name (e.g., "hermes", "qwen_xml") or path to hook file.
+        tool_parser_arg: Either a parser name (e.g., `"hermes"`, `"qwen_xml"`) or path to hook file.
 
-    Returns:
-        ToolParser instance, or None if not specified.
-
-    Raises:
-        click.ClickException: If the parser name is unknown or hook file is invalid.
+    Notes:
+        File paths are checked first; if the path doesn't exist, it's treated as a parser name.
     """
     if tool_parser_arg is None:
         return None
@@ -178,18 +153,10 @@ def load_tool_parser(tool_parser_arg: str | None) -> ToolParser | None:
 def _load_tool_parser_hook(path: Path) -> ToolParser:
     """Load tool parser from hook file.
 
-    The hook file must export either:
-    - `tool_parser`: A ToolParser instance
-    - `ToolParserClass`: A ToolParser subclass (will be instantiated)
-
-    Args:
-        path: Path to the Python hook file.
-
-    Returns:
-        ToolParser instance from the hook file.
-
-    Raises:
-        click.ClickException: If the file cannot be loaded or doesn't export the parser.
+    Notes:
+        The hook file must export either:
+        - `tool_parser`: A `ToolParser` instance
+        - `ToolParserClass`: A `ToolParser` subclass (will be instantiated)
     """
     from strands_sglang.tool_parsers import ToolParser
 
@@ -230,14 +197,11 @@ def _load_tool_parser_hook(path: Path) -> ToolParser:
 
 
 def build_model_factory(config: ModelConfig, max_concurrency: int) -> ModelFactory:
-    """Build a ModelFactory from ModelConfig.
+    """Build a `ModelFactory` from `ModelConfig`.
 
     Args:
         config: Model configuration.
         max_concurrency: Max concurrent connections (for SGLang client pooling).
-
-    Returns:
-        ModelFactory callable.
     """
     sampling = config.sampling.to_dict()
 

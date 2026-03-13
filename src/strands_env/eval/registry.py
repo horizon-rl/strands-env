@@ -85,13 +85,7 @@ def get_benchmark(name: str) -> type[Evaluator]:
     """Get a registered benchmark evaluator by name.
 
     Args:
-        name: Benchmark name (e.g., "aime-2024").
-
-    Returns:
-        Evaluator subclass.
-
-    Raises:
-        KeyError: If benchmark is not registered.
+        name: Benchmark name (e.g., `"aime-2024"`).
     """
     _discover_benchmarks()
 
@@ -104,18 +98,15 @@ def get_benchmark(name: str) -> type[Evaluator]:
 def list_benchmarks() -> list[str]:
     """List all registered benchmark names.
 
-    Note: Benchmarks with missing dependencies will not appear in this list.
-    Use list_unavailable_benchmarks() to see them.
+    Notes:
+        Benchmarks with missing dependencies will not appear in this list.
+        Use `list_unavailable_benchmarks()` to see them.
     """
     _discover_benchmarks()
     return sorted(_BENCHMARKS.keys())
 
 
 def list_unavailable_benchmarks() -> dict[str, str]:
-    """List benchmark modules that failed to load due to missing dependencies.
-
-    Returns:
-        Dict mapping module name to error message.
-    """
+    """Return benchmark modules that failed to load, mapped to their error messages."""
     _discover_benchmarks()
     return dict(_UNAVAILABLE)

@@ -104,10 +104,8 @@ class Evaluator:
     def get_metric_fns(self) -> list[MetricFn]:
         """Return metric functions for evaluation. Override to customize.
 
-        By default, includes pass@k metric based on n_samples_per_prompt.
-
-        Returns:
-            List of metric functions.
+        Notes:
+            By default, includes pass@k metric based on `n_samples_per_prompt`.
         """
         return [
             partial(
@@ -179,14 +177,7 @@ class Evaluator:
             await env.cleanup()
 
     async def run(self, actions: Iterable[Action]) -> dict[str, list[EvalSample]]:
-        """Run evaluation on actions with n_samples_per_prompt each.
-
-        Args:
-            actions: Actions to evaluate.
-
-        Returns:
-            Dict mapping prompt_id to list of EvalSample results.
-        """
+        """Run evaluation on actions with `n_samples_per_prompt` each."""
         self.load_results()
 
         # Expand actions to (prompt_id, sample_id, action) tuples
@@ -225,14 +216,8 @@ class Evaluator:
     def compute_metrics(self, results: dict[str, list[EvalSample]], log: bool = True) -> dict[str, float]:
         """Compute all metrics on results.
 
-        Aborted samples are excluded from metric computation.
-
-        Args:
-            results: Dict mapping prompt_id to sample results.
-            log: Whether to log the metrics summary.
-
-        Returns:
-            Dict mapping metric names to values.
+        Notes:
+            Aborted samples are excluded from metric computation.
         """
         # Exclude entire prompt if any sample is aborted (keeps n consistent for pass@k)
         filtered = {pid: samples for pid, samples in results.items() if not any(s.aborted for s in samples)}

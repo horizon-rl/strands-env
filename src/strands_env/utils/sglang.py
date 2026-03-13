@@ -22,15 +22,9 @@ import httpx
 def check_server_health(base_url: str, timeout: float = 5.0) -> None:
     """Check if the SGLang server is reachable.
 
-    Sync convenience using httpx (available via openai's transitive dependency).
-    For async runtime use, see `SGLangClient.health()` which uses aiohttp.
-
-    Args:
-        base_url: Base URL of the SGLang server.
-        timeout: Request timeout in seconds.
-
-    Raises:
-        ConnectionError: If the server is not reachable or unhealthy.
+    Notes:
+        Sync convenience using httpx. For async runtime use, see
+        `SGLangClient.health()` which uses aiohttp.
     """
     try:
         response = httpx.get(f"{base_url}/health", timeout=timeout)
@@ -42,15 +36,9 @@ def check_server_health(base_url: str, timeout: float = 5.0) -> None:
 def get_model_id(base_url: str, timeout: float = 5.0) -> str:
     """Get the model ID from the SGLang server.
 
-    Sync convenience using httpx (available via openai's transitive dependency).
-    For async runtime use, see `SGLangClient.get_model_info()` which uses aiohttp.
-
-    Args:
-        base_url: Base URL of the SGLang server.
-        timeout: Request timeout in seconds.
-
-    Returns:
-        The model path/ID from the server.
+    Notes:
+        Sync convenience using httpx. For async runtime use, see
+        `SGLangClient.get_model_info()` which uses aiohttp.
     """
     response = httpx.get(f"{base_url}/get_model_info", timeout=timeout)
     response.raise_for_status()

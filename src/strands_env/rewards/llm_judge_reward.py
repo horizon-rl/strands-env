@@ -36,20 +36,19 @@ JudgmentFormat = TypeVar("JudgmentFormat", bound=BaseModel)
 class LLMJudgeReward(RewardFunction, Generic[JudgmentFormat]):
     r"""Abstract base for LLM-as-judge reward functions.
 
-    Subclasses set `judgment_format` class attribute and implement
-    `get_judge_prompt` and `get_reward`.
-
-    When `judgment_format` is set, uses structured output and passes
-    the parsed Pydantic model to `get_reward`. When `None`, passes
-    the raw text response instead.
-
     Args:
         judge_model: The model to use for judging.
         system_prompt: Optional system prompt for the judge.
         default_reward: Reward to return if the judge fails.
 
-    Example (structured output)::
+    Notes:
+        - Subclasses set `judgment_format` class attribute and implement
+          `get_judge_prompt` and `get_reward`.
+        - When `judgment_format` is set, uses structured output and passes
+          the parsed Pydantic model to `get_reward`. When `None`, passes
+          the raw text response instead.
 
+    Example:
         class SimpleQAReward(LLMJudgeReward[SimpleQAJudgment]):
             judgment_format = SimpleQAJudgment
 
@@ -58,18 +57,6 @@ class LLMJudgeReward(RewardFunction, Generic[JudgmentFormat]):
 
             async def get_reward(self, judgment: SimpleQAJudgment | str) -> float:
                 return {"correct": 1.0, "incorrect": 0.0, "not_attempted": 0.0}[judgment.grade]
-
-    Example (text output)::
-
-        class RegexReward(LLMJudgeReward):
-            # judgment_format defaults to None — uses raw text
-
-            async def get_judge_prompt(self, action: Action, step_result: StepResult) -> str:
-                return f"Rate this response 1-10: {step_result.observation.final_response}"
-
-            async def get_reward(self, judgment: BaseModel | str) -> float:
-                match = re.search(r"(\\d+)", judgment)
-                return int(match.group(1)) / 10 if match else 0.0
     """
 
     #: Pydantic model for structured output. Subclasses override to enable structured output.

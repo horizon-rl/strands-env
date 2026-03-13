@@ -47,18 +47,6 @@ _MATH_VERIFY_ERRORS = (Exception, MathVerifyTimeout)
 class MathVerifyReward(RewardFunction):
     r"""Reward 1.0 if the model's `\boxed{}` answer is mathematically equivalent to ground truth.
 
-    Uses `math_verify.parse` to extract and convert answers to SymPy,
-    then `math_verify.verify` for equivalence checking. This handles:
-
-    - Fraction / decimal equivalence (`1/2` = `0.5`)
-    - Symbolic simplification (`\\sqrt{3}/3` = `1/\\sqrt{3}`)
-    - Sets and intervals (`{1,3} \\cup {2,4}` = `{1,2,3,4}`)
-    - Nested expressions and LaTeX normalization
-
-    When either side parses to multiple candidate expressions (e.g. several
-    `\\boxed{}` in the response), `verify` returns True if **any**
-    gold-target pair matches (Cartesian product).
-
     Args:
         float_rounding: Decimal places for float comparison (default 6).
         parse_timeout: Max seconds for parsing expressions from text (default 5).
@@ -66,6 +54,15 @@ class MathVerifyReward(RewardFunction):
         answer_tail_chars: Only parse the last N chars of model response (default 500).
             Set to 0 to parse full response. The final `\\boxed{}` answer is typically
             at the end, so this avoids parsing long chain-of-thought reasoning.
+
+    Notes:
+        - Uses `math_verify.parse` to extract and convert answers to SymPy,
+          then `math_verify.verify` for equivalence checking. This handles
+          fraction/decimal equivalence, symbolic simplification, sets/intervals,
+          and nested expressions with LaTeX normalization.
+        - When either side parses to multiple candidate expressions (e.g. several
+          `\\boxed{}` in the response), `verify` returns True if **any**
+          gold-target pair matches (Cartesian product).
     """
 
     def __init__(

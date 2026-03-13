@@ -35,12 +35,11 @@ logger = logging.getLogger(__name__)
 class MCPEnvironment(Environment):
     """Environment backed by a single MCP server.
 
-    Accepts an optional pre-constructed `MCPClient` and manages its lifecycle:
-    `reset()` starts the client, `cleanup()` stops it.
-    `get_tools()` returns tools from the client.
-
-    Subclasses may set `self._mcp_client` during `reset()` and call `super().reset()`
-    to start it.
+    Notes:
+        - Accepts an optional pre-constructed `MCPClient` and manages its lifecycle:
+          `reset()` starts the client, `cleanup()` stops it.
+        - Subclasses may set `self._mcp_client` during `reset()` and call `super().reset()`
+          to start it.
     """
 
     default_system_prompt_path = Path(__file__).parent / "system_prompt.md"

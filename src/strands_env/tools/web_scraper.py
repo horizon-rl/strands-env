@@ -68,20 +68,12 @@ _REQUEST_HEADERS = {
 class WebScraperToolkit:
     """Web scraper with optional LLM extraction for strands agents.
 
-    Fetches web pages and extracts relevant content using `trafilatura`
-    or `html2text` for main content extraction.  Optionally uses a LLM
-    summarizer (via `summarizer_model_factory`).
-
-    Two `@tool` methods are provided — the environment picks which to
-    expose:
-
-    * `scrape` — fetch + extract raw content (no LLM).
-    * `scrape_and_summarize` — fetch + extract + LLM summarization
-      (requires `summarizer_model_factory`).
-
-    A single shared `aiohttp.ClientSession` (created lazily) and
-    an `asyncio.Semaphore` cap concurrent requests.  Call
-    `cleanup` when done to close the session.
+    Notes:
+        - Two `@tool` methods are provided — the environment picks which to expose:
+          `scrape` (fetch + extract) and `scrape_and_summarize` (fetch + extract + LLM,
+          requires `summarizer_model_factory`).
+        - A single shared `aiohttp.ClientSession` (created lazily) and an
+          `asyncio.Semaphore` cap concurrent requests. Call `cleanup` when done.
     """
 
     def __init__(
@@ -130,11 +122,11 @@ class WebScraperToolkit:
     async def extract_content(self, html: str, url: str) -> str:
         """Extract main content from HTML, stripping boilerplate and truncating to token budget.
 
-        Uses `trafilatura` as primary extractor; falls back to `html2text`
-        for pages where `trafilatura` returns insufficient content.
-
-        A fresh `html2text` instance is created per call for thread safety
-        (this method runs in a thread pool via `asyncio.to_thread`).
+        Notes:
+            - Uses `trafilatura` as primary extractor; falls back to `html2text`
+              for pages where `trafilatura` returns insufficient content.
+            - A fresh `html2text` instance is created per call for thread safety
+              (runs in a thread pool via `asyncio.to_thread`).
         """
         import html2text
         import trafilatura
@@ -167,7 +159,8 @@ class WebScraperToolkit:
     async def summarize(self, content: str, instruction: str) -> str:
         """Use a base `Environment` to summarize the content based on the instruction.
 
-        Uses `Environment` for client sharing (e.g. Bedrock) and exception handling.
+        Notes:
+            Uses `Environment` for client sharing (e.g. Bedrock) and exception handling.
         """
         if self._summarizer_model_factory is None:
             logger.warning("`summarizer_model_factory` is not set. Returning raw content.")

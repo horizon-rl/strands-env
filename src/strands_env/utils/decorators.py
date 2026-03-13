@@ -25,11 +25,11 @@ from typing import Any
 def requires_env(*env_vars: str) -> Callable[..., Any]:
     """Decorator that validates environment variables at call time.
 
-    Returns an error string if any required env var is missing,
-    avoiding the need for credential parameters in `__init__`.
+    Notes:
+        Returns an error string if any required env var is missing,
+        avoiding the need for credential parameters in `__init__`.
 
-    Example::
-
+    Example:
         class MyToolkit:
             @tool
             @requires_env("SERPER_API_KEY")

@@ -49,22 +49,9 @@ class CodeMode(str, Enum):
 class CodeSandboxEnv(Environment):
     """Code sandbox environment using AWS Bedrock AgentCore Code Interpreter.
 
-    Provides `execute_code` (Python) and/or `execute_command` (shell) tools
-    depending on the configured `CodeMode`.
-
-    Example:
-        from strands_env.environments.code_sandbox import CodeSandboxEnv, CodeMode
-        from strands_env.utils.aws import get_client
-
-        client = get_client("bedrock-agentcore", region="us-east-1")
-        env = CodeSandboxEnv(
-            client=client,
-            model_factory=model_factory,
-            mode=CodeMode.CODE,  # Only Python execution
-        )
-
-        result = await env.step(action)
-        await env.cleanup()  # Clean up code interpreter session
+    Notes:
+        Provides `execute_code` (Python) and/or `execute_command` (shell) tools
+        depending on the configured `CodeMode`.
     """
 
     default_system_prompt_path = Path(__file__).parent / "system_prompt.md"

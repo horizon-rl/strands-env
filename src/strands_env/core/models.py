@@ -118,18 +118,18 @@ def bedrock_model_factory(
 ) -> ModelFactory:
     """Return a factory that creates `BedrockModel` instances.
 
-    A single boto3 client (thread-safe) is created once from the session and
-    shared across all model instances.  `BedrockModel` doesn't accept a
-    pre-built client, so we extract it from a pilot instance and override
-    `model.client` on each subsequent one.
-
-    Principle of operation: "one boto3 session, one boto3 client"
-
     Args:
-        model_id: Bedrock model ID (e.g. "us.anthropic.claude-sonnet-4-20250514-v1:0").
+        model_id: Bedrock model ID (e.g. `"us.anthropic.claude-sonnet-4-20250514-v1:0"`).
         boto_session: Boto3 session for AWS credentials.
         boto_client_config: Botocore client configuration.
         sampling_params: Sampling parameters for the model (e.g. `{"max_new_tokens": 4096}`).
+
+    Notes:
+        - A single boto3 client (thread-safe) is created once from the session and
+        shared across all model instances.  `BedrockModel` doesn't accept a pre-built client,
+        so we extract it from a pilot instance and override `model.client` on each subsequent one.
+        - The principle of operation is "one boto3 session, one boto3 client".
+        - `max_new_tokens` in `sampling_params` is remapped to `max_tokens` for the Bedrock API.
     """
     sampling_params = dict(sampling_params)
     if "max_new_tokens" in sampling_params:
@@ -176,9 +176,12 @@ def openai_model_factory(
     """Return a factory that creates `OpenAIModel` instances.
 
     Args:
-        model_id: OpenAI model ID (e.g. "gpt-4o").
+        model_id: OpenAI model ID (e.g. `"gpt-4o"`).
         sampling_params: Sampling parameters for the model (e.g. `{"max_new_tokens": 4096}`).
         client_args: Arguments for the OpenAI client (e.g. `{"api_key": "...", "base_url": "..."}`).
+
+    Notes:
+        `max_new_tokens` in `sampling_params` is remapped to `max_tokens` for the OpenAI API.
     """
     sampling_params = dict(sampling_params)
     if "max_new_tokens" in sampling_params:
@@ -199,8 +202,9 @@ def openai_model_factory(
 def _get_kimi_model_class() -> type:
     """Return a LiteLLMModel subclass that preserves reasoning_content for Moonshot.
 
-    Both OpenAIModel and LiteLLMModel strip reasoningContent in _format_regular_messages,
-    but Moonshot requires it back as a top-level reasoning_content field in multi-turn messages.
+    Notes:
+        - Both `OpenAIModel` and `LiteLLMModel` strip `reasoningContent` in `_format_regular_messages`,
+        but Moonshot requires it back as a top-level `reasoning_content` field in multi-turn messages.
     """
     from strands.models.litellm import LiteLLMModel
 
@@ -243,14 +247,16 @@ def kimi_model_factory(
     sampling_params: dict[str, Any] = DEFAULT_SAMPLING_PARAMS,
     client_args: dict[str, Any] | None = None,
 ) -> ModelFactory:
-    """Return a factory that creates KimiModel instances for Moonshot AI.
-
-    Requires `MOONSHOT_API_KEY` environment variable to be set.
+    """Return a factory that creates `KimiModel` instances for Moonshot AI.
 
     Args:
         model_id: LiteLLM model ID with `moonshot/` prefix (default `"moonshot/kimi-k2.5"`).
         sampling_params: Sampling parameters for the model (e.g. `{"max_new_tokens": 4096}`).
         client_args: Arguments for the LiteLLM client.
+
+    Notes:
+        - Requires `MOONSHOT_API_KEY` environment variable.
+        - `max_new_tokens` in `sampling_params` is remapped to `max_tokens` for the LiteLLM API.
     """
     kimi_model_cls = _get_kimi_model_class()
 

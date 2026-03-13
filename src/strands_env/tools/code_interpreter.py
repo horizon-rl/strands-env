@@ -30,11 +30,11 @@ CODE_INTERPRETER_ID = "aws.codeinterpreter.v1"
 class CodeInterpreterToolkit:
     """Code toolkit using AWS Bedrock AgentCore Code Interpreter.
 
-    Provides `execute_code` and `execute_command` tools for running Python code
-    and shell commands in a sandboxed environment.
-
-    Uses a single shared agentcore session through session ID. Call
-    `cleanup` when done to close the session.
+    Notes:
+        - Provides `execute_code` and `execute_command` tools for running Python code
+          and shell commands in a sandboxed environment.
+        - Uses a single shared agentcore session through session ID. Call
+          `cleanup` when done to close the session.
     """
 
     def __init__(
@@ -72,16 +72,11 @@ class CodeInterpreterToolkit:
         return self._session_id
 
     def _parse_stream_response(self, response: dict[str, Any]) -> str:
-        """Parse the EventStream response from invoke_code_interpreter.
+        """Parse the EventStream response from `invoke_code_interpreter`.
 
-        Extracts text content from result events or error messages from exceptions.
-        Returns plain text that strands will wrap in tool result format.
-
-        Args:
-            response: Raw response from invoke_code_interpreter.
-
-        Returns:
-            Text content from execution result or error message.
+        Notes:
+            Extracts text content from result events or error messages from exceptions.
+            Returns plain text that strands will wrap in tool result format.
         """
         errors: list[str] = []
 

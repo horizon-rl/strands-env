@@ -33,21 +33,18 @@ def get_session(
 ) -> boto3.Session:
     """Create a new boto3 session.
 
-    Returns a **fresh** session every time — boto3 sessions are not thread-safe,
-    so they must not be shared across concurrent calls.  Use :func:`get_client`
-    instead when you need a cached, thread-safe client.
-
-    If `role_arn` is provided, assumes the role using STS with auto-refreshing
-    credentials via botocore's `RefreshableCredentials`.
-
     Args:
         region: AWS region name.
         profile_name: Optional AWS profile name from ~/.aws/config.
         role_arn: Optional ARN of the IAM role to assume.
         session_name: Session name for assumed role (only used if role_arn provided).
 
-    Returns:
-        A new boto3 Session instance.
+    Notes:
+        - Returns a **fresh** session every time — boto3 sessions are not thread-safe,
+          so they must not be shared across concurrent calls. Use `get_client` instead
+          when you need a cached, thread-safe client.
+        - If `role_arn` is provided, assumes the role using STS with auto-refreshing
+          credentials via botocore's `RefreshableCredentials`.
     """
     if role_arn:
         return _create_assumed_role_session(role_arn, region, session_name)
@@ -95,20 +92,18 @@ def get_client(
 ) -> BaseClient:
     """Get a cached boto3 client.
 
-    Each client gets its own dedicated boto3 Session, avoiding the thread-safety
-    issues of sharing a Session across clients. The client itself is thread-safe
-    and can be shared. If `role_arn` is provided, the underlying Session uses
-    `RefreshableCredentials` so the client auto-refreshes when credentials expire.
-
     Args:
-        service_name: AWS service name (e.g. "bedrock-agentcore", "lambda", "dynamodb").
+        service_name: AWS service name (e.g. `"bedrock-agentcore"`, `"lambda"`, `"dynamodb"`).
         region: AWS region name.
         profile_name: Optional AWS profile name from ~/.aws/config.
         role_arn: Optional ARN of the IAM role to assume.
         session_name: Session name for assumed role (only used if role_arn provided).
 
-    Returns:
-        Cached boto3 client instance.
+    Notes:
+        - Each client gets its own dedicated boto3 Session, avoiding the thread-safety
+          issues of sharing a Session across clients. The client itself is thread-safe.
+        - If `role_arn` is provided, the underlying Session uses `RefreshableCredentials`
+          so the client auto-refreshes when credentials expire.
     """
     if role_arn:
         session = _create_assumed_role_session(role_arn, region, session_name)
