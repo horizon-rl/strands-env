@@ -24,6 +24,7 @@ from typing_extensions import override
 
 from strands_env.core.environment import Environment
 from strands_env.tools import CodeInterpreterToolkit
+from strands_env.tools.code_interpreter import CodeInterpreterQuotas
 from strands_env.utils.aws import get_client
 
 if TYPE_CHECKING:
@@ -67,6 +68,7 @@ class CodeSandboxEnv(Environment):
         verbose: bool = False,
         client: BaseClient | None = None,
         mode: CodeMode = CodeMode.CODE,
+        quotas: CodeInterpreterQuotas | None = None,
     ):
         """Initialize a `CodeSandboxEnv` instance."""
         super().__init__(
@@ -78,7 +80,10 @@ class CodeSandboxEnv(Environment):
             verbose=verbose,
         )
         self.mode = mode
-        self._toolkit = CodeInterpreterToolkit(client=client or get_client(service_name="bedrock-agentcore"))
+        self._toolkit = CodeInterpreterToolkit(
+            client=client or get_client(service_name="bedrock-agentcore"),
+            quotas=quotas,
+        )
 
     @override
     def get_tools(self) -> list:
@@ -93,4 +98,4 @@ class CodeSandboxEnv(Environment):
     @override
     async def cleanup(self) -> None:
         """Clean up code interpreter session."""
-        self._toolkit.cleanup()
+        await self._toolkit.cleanup()
