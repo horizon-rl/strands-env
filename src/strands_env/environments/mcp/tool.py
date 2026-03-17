@@ -22,12 +22,12 @@ actual call mechanism.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import Any, Literal
 
 from mcp.types import TextContent
 from mcp.types import Tool as MCPToolDef
 from strands.tools.tools import AgentTool, ToolResultEvent
-from strands.types.tools import ToolGenerator, ToolResult, ToolSpec, ToolUse
+from strands.types.tools import ToolGenerator, ToolResult, ToolResultContent, ToolSpec, ToolUse
 from typing_extensions import override
 
 
@@ -86,10 +86,12 @@ class MCPTool(AgentTool):
         Delegates to `_call_tool()` and parses the MCP result into a Strands `ToolResult`.
         """
         result = await self._call_tool(self._mcp_tool.name, tool_use["input"])
-        content = [{"text": item.text} for item in result.content if isinstance(item, TextContent)]
+        content: list[ToolResultContent] = [
+            ToolResultContent(text=item.text) for item in result.content if isinstance(item, TextContent)
+        ]
         if not content:
-            content = [{"text": str(item)} for item in result.content] or [{"text": ""}]
+            content = [ToolResultContent(text=str(item)) for item in result.content] or [ToolResultContent(text="")]
         is_error = getattr(result, "is_error", None) or getattr(result, "isError", False)
-        status = "error" if is_error else "success"
+        status: Literal["success", "error"] = "error" if is_error else "success"
 
         yield ToolResultEvent(ToolResult(status=status, toolUseId=tool_use["toolUseId"], content=content))
