@@ -167,8 +167,10 @@ class Environment:
         )
         cycle_durations = event_loop_metrics.cycle_durations
 
+        known_tools = {t.tool_name for t in self.get_tools()}
         per_tool_metrics = {
             name: {
+                "is_known": name in known_tools,
                 "calls": tm.call_count,
                 "successes": tm.success_count,
                 "errors": tm.error_count,
