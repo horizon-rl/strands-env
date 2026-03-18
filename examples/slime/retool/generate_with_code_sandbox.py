@@ -65,10 +65,7 @@ async def generate_and_rm(args, sample: Sample, sampling_params) -> Sample:
         sampling_params=sampling_params,
     )
     bedrock_client = get_client("bedrock-agentcore")
-    reward_fn = MathVerifyReward(parse_timeout=None, verify_timeout=None)
-    # Note: we temporarily set the parse_timout and verify_timeout as None because Math-Verify cannot handle timeout in threaded environments
-    # Please see: https://github.com/verl-project/verl/issues/3407 and https://github.com/huggingface/Math-Verify/issues/42
-    # TODO: enabling manual timeout implementation in rewards/math_verify_reward.py
+    reward_fn = MathVerifyReward()
     env = CodeSandboxEnv(
         model_factory=model_factory,
         client=bedrock_client,
