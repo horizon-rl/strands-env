@@ -151,7 +151,7 @@ class BrowseCompEvaluator(Evaluator):
     @classmethod
     def derive_key(cls, password: str, length: int) -> bytes:
         """Derive a fixed-length key from the password using SHA256."""
-        digest = hashlib.sha256(password.encode()).digest()
+        digest = hashlib.sha256(password.encode()).digest()  # noqa: S324 — not for security; replicates OpenAI simple-evals XOR obfuscation
         return digest * (length // len(digest)) + digest[: length % len(digest)]
 
     @classmethod
