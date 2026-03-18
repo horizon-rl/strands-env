@@ -22,6 +22,10 @@ via SymPy (handling fractions, sets, nested expressions, etc.).
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from typing import Any
 
 from math_verify import ExprExtractionConfig, LatexExtractionConfig, parse, verify
 from math_verify.errors import TimeoutException as MathVerifyTimeout
@@ -63,6 +67,9 @@ class MathVerifyReward(RewardFunction):
         - When either side parses to multiple candidate expressions (e.g. several
           `\\boxed{}` in the response), `verify` returns True if **any**
           gold-target pair matches (Cartesian product).
+        - Implements manual timeout using ThreadPoolExecutor to work in multithreaded
+          environments. Math-verify's built-in timeout uses signal.alarm() which
+          only works in the main thread. See: https://github.com/huggingface/Math-Verify/issues/42
     """
 
     def __init__(
@@ -78,16 +85,55 @@ class MathVerifyReward(RewardFunction):
         self.verify_timeout = verify_timeout
         self.answer_tail_chars = answer_tail_chars
 
+    def _run_with_manual_timeout(
+        self,
+        func: Callable[..., Any],
+        timeout: float | None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Run a function with manual timeout using ThreadPoolExecutor.
+
+        Math-verify's built-in timeout uses signal.alarm() which doesn't work
+        in multithreaded environments. This wrapper implements timeout using
+        concurrent.futures which works correctly in all contexts.
+
+        Args:
+            func: The function to run.
+            timeout: Timeout in seconds, or None to run without timeout.
+            *args: Positional arguments to pass to ``func``.
+            **kwargs: Keyword arguments to pass to ``func``.
+
+        Returns:
+            The result of ``func(*args, **kwargs)``.
+
+        Raises:
+            TimeoutError: If the function doesn't complete within timeout seconds.
+        """
+        if timeout is None:
+            return func(*args, **kwargs)
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(func, *args, **kwargs)
+            try:
+                return future.result(timeout=timeout)
+            except FuturesTimeoutError as e:
+                raise TimeoutError(f"Operation timed out after {timeout} seconds") from e
+
     def _parse(self, text: str) -> list:
         """Parse text into math expressions. Raises on error or timeout."""
-        return list(
-            parse(
-                text,
-                extraction_config=_EXTRACTION_CONFIG,
-                parsing_timeout=self.parse_timeout,
-                raise_on_error=True,
+
+        def _do_parse() -> list[Any]:
+            return list(
+                parse(
+                    text,
+                    extraction_config=_EXTRACTION_CONFIG,
+                    parsing_timeout=None,  # Disable math-verify's timeout, use manual timeout
+                    raise_on_error=True,
+                )
             )
-        )
+
+        return self._run_with_manual_timeout(_do_parse, self.parse_timeout)
 
     @override
     async def compute(self, action: Action, step_result: StepResult) -> RewardResult:
@@ -105,6 +151,9 @@ class MathVerifyReward(RewardFunction):
         except _MATH_VERIFY_ERRORS as e:
             logger.error("Failed to parse ground truth: %s: %s", type(e).__name__, ground_truth[:100])
             return RewardResult(reward=0.0, info={"reason": "gold_parse_failed", "ground_truth": ground_truth})
+        except TimeoutError as e:
+            logger.error("Parse ground truth timeout: %s", e)
+            return RewardResult(reward=0.0, info={"reason": "gold_parse_timeout", "ground_truth": ground_truth})
         if not gold:
             return RewardResult(reward=0.0, info={"reason": "gold_parse_failed", "ground_truth": ground_truth})
 
@@ -115,14 +164,29 @@ class MathVerifyReward(RewardFunction):
         except _MATH_VERIFY_ERRORS as e:
             logger.error("Failed to parse answer: %s: %s...", type(e).__name__, answer_text[:100])
             return RewardResult(reward=0.0, info={"reason": "answer_parse_failed", "response": content})
+        except TimeoutError as e:
+            logger.error("Parse answer timeout: %s", e)
+            return RewardResult(reward=0.0, info={"reason": "answer_parse_timeout", "response": content})
         if not answer:
             return RewardResult(reward=0.0, info={"reason": "answer_parse_failed", "response": content})
 
         # Verify equivalence
         try:
-            matched = verify(gold, answer, float_rounding=self.float_rounding, timeout_seconds=self.verify_timeout)
+
+            def _do_verify() -> list[Any]:
+                return verify(
+                    gold,
+                    answer,
+                    float_rounding=self.float_rounding,
+                    timeout_seconds=None,  # Disable math-verify's timeout, use manual timeout
+                )
+
+            matched = self._run_with_manual_timeout(_do_verify, self.verify_timeout)
         except _MATH_VERIFY_ERRORS as e:
             logger.error("Failed to verify: %s", type(e).__name__)
+            matched = False
+        except TimeoutError as e:
+            logger.error("Verify timeout: %s", e)
             matched = False
 
         return RewardResult(

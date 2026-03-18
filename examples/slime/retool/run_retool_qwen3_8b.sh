@@ -44,7 +44,7 @@ ROLLOUT_ARGS=(
    --label-key label
    --rollout-shuffle
    --num-rollout 500
-   --rollout-batch-size 64  
+   --rollout-batch-size 64
    --n-samples-per-prompt 8
    --rollout-max-response-len 16384
    --rollout-temperature 1
