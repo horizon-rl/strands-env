@@ -21,15 +21,7 @@ from strands_env.rewards import MathVerifyReward
 
 
 def create_env_factory(model_factory: ModelFactory, env_config: EnvConfig):
-    """Create env_factory for CodeSandboxEnv.
-
-    Args:
-        model_factory: Model factory provided by CLI.
-        env_config: Environment configuration from CLI.
-
-    Returns:
-        Async env_factory function.
-    """
+    """Create env_factory for `CodeSandboxEnv`."""
     reward_fn = MathVerifyReward()
 
     async def env_factory(_action):

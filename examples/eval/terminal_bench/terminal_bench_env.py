@@ -23,15 +23,7 @@ from strands_env.environments.terminal_bench import TerminalBenchEnv
 
 
 def create_env_factory(model_factory: ModelFactory, env_config: EnvConfig):
-    """Create env_factory for TerminalBenchEnv.
-
-    Args:
-        model_factory: Model factory provided by CLI.
-        env_config: Environment configuration from CLI.
-
-    Returns:
-        Async env_factory function.
-    """
+    """Create env_factory for `TerminalBenchEnv`."""
 
     async def env_factory(action: Action) -> TerminalBenchEnv:
         """Create a new TerminalBenchEnv with its own Docker container."""
