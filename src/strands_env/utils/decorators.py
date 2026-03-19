@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Decorator utilities for `strands_env`."""
+"""Decorator and utility function helpers for `strands_env`."""
 
 from __future__ import annotations
 
 import os
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from functools import wraps
-from typing import Any
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 
 def requires_env(*env_vars: str) -> Callable[..., Any]:
@@ -45,6 +49,44 @@ def requires_env(*env_vars: str) -> Callable[..., Any]:
             if missing:
                 return f"Error: missing required environment variable(s): {', '.join(missing)}"
             return await fn(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def with_timeout(timeout: float | None) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Decorator that enforces a timeout on function execution using `ThreadPoolExecutor`.
+
+    This is useful when the function's own timeout mechanism relies on
+    `signal.alarm()` (which only works in the main thread). This decorator
+    works correctly in all threading contexts.
+
+    Args:
+        timeout: Timeout in seconds, or `None` to run without timeout.
+
+    Raises:
+        TimeoutError: If the function doesn't complete within `timeout` seconds.
+
+    Example::
+
+        @with_timeout(5)
+        def slow_computation():
+            ...
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        if timeout is None:
+            return func
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(func, *args, **kwargs)
+                try:
+                    return future.result(timeout=timeout)
+                except FuturesTimeoutError as e:
+                    raise TimeoutError(f"Operation timed out after {timeout} seconds") from e
 
         return wrapper
 
