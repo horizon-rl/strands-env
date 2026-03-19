@@ -17,9 +17,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TypeAlias
 
 from strands import Agent
 from strands.agent.conversation_manager import ConversationManager, NullConversationManager
@@ -38,6 +38,9 @@ from .types import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: Type alias for environment factory function (async).
+AsyncEnvFactory: TypeAlias = Callable[[Any], Awaitable["Environment"]]
 
 
 class Environment:
