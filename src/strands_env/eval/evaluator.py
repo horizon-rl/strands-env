@@ -23,6 +23,7 @@ from collections import defaultdict
 from collections.abc import Awaitable, Callable, Iterable
 from functools import partial
 from pathlib import Path
+from typing import TypeAlias
 
 from pydantic import BaseModel
 from tqdm import tqdm
@@ -35,7 +36,7 @@ from .metrics import MetricFn, compute_pass_at_k
 logger = logging.getLogger(__name__)
 
 #: Type alias for environment factory function (async).
-AsyncEnvFactory = Callable[[Action], Awaitable[Environment]]
+AsyncEnvFactory: TypeAlias = Callable[[Action], Awaitable[Environment]]
 
 
 class EvalSample(BaseModel):
