@@ -14,24 +14,16 @@
 
 """Example environment hook for math reasoning evaluation with `CalculatorEnv`."""
 
-from strands_env.cli.config import EnvConfig
 from strands_env.core.models import ModelFactory
 from strands_env.environments.calculator import CalculatorEnv
 from strands_env.rewards import MathVerifyReward
 
 
-def create_env_factory(model_factory: ModelFactory, env_config: EnvConfig):
+def create_env_factory(model_factory: ModelFactory, **env_config):
     """Create env_factory for `CalculatorEnv`."""
     reward_fn = MathVerifyReward()
 
     async def env_factory(_action):
-        return CalculatorEnv(
-            model_factory=model_factory,
-            reward_fn=reward_fn,
-            system_prompt=env_config.system_prompt,
-            max_tool_iters=env_config.max_tool_iters,
-            max_tool_calls=env_config.max_tool_calls,
-            verbose=env_config.verbose,
-        )
+        return CalculatorEnv(model_factory=model_factory, reward_fn=reward_fn, **env_config)
 
     return env_factory
