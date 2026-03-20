@@ -58,6 +58,7 @@ async def run_demo(
         backend=backend,
         model_id=model_id,
         base_url=base_url,
+        tool_parser="qwen_xml",  # for Qwen/Qwen3.5 models
         sampling=SamplingConfig(),
     )
     model_factory = build_model_factory(config, max_concurrency=1)
