@@ -201,7 +201,7 @@ def run_cmd(
         role_arn=role_arn,
         sampling=SamplingConfig(temperature=temperature, max_new_tokens=max_tokens, top_p=top_p, top_k=top_k),
     )
-    model_factory = build_model_factory(model_config=model_config, max_concurrency=max_concurrency)
+    model_factory = build_model_factory(config=model_config, max_concurrency=max_concurrency)
 
     # Create env_factory from hook
     env_factory = load_env_factory_hook(env_hook)(model_factory, **(env_config or {}))
