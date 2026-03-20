@@ -34,7 +34,7 @@ env = TerminalBenchEnv(
     task_id="task-001",
     task_dir="/path/to/task",
     trial_dir="/path/to/output",
-    timeout_s=1200,
+    timeout=1200,
 )
 
 await env.reset()       # Build and start Docker container

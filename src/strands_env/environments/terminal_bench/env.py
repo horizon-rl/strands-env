@@ -49,7 +49,7 @@ class TerminalBenchConfig(EnvironmentConfig):
     task_dir: str
     trial_dir: str
     harbor_env_config: NotRequired[HarborEnvironmentConfig]
-    timeout_s: NotRequired[int]
+    timeout: NotRequired[int]
 
 
 class TerminalBenchEnv(Environment):
@@ -71,7 +71,7 @@ class TerminalBenchEnv(Environment):
             **config,
         )
         self.task_id: str = self.config["task_id"]
-        self.timeout = self.config.get("timeout_s", 1200)
+        self.timeout = self.config.get("timeout", 1200)
         self.harbor_env_config = self.config.get("harbor_env_config", HarborEnvironmentConfig())
         self.task_paths = TaskPaths(self.config["task_dir"])
         self.trial_paths = TrialPaths(self.config["trial_dir"])

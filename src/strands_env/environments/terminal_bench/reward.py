@@ -51,7 +51,7 @@ class TerminalBenchReward(RewardFunction):
         docker_env = self._env.docker_env
         task_paths = self._env.task_paths
         trial_paths = self._env.trial_paths
-        timeout = self._env.config.timeout_s
+        timeout = self._env.timeout
 
         # Upload and run tests
         await docker_env.upload_dir(source_dir=task_paths.tests_dir, target_dir="/tests")
