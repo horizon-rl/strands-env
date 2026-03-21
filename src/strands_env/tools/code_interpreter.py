@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
@@ -26,11 +27,46 @@ from strands import tool
 if TYPE_CHECKING:
     from botocore.client import BaseClient
 
-CODE_INTERPRETER_ID = "aws.codeinterpreter.v1"
 
-# AWS default quotas for Code Interpreter
-DEFAULT_MAX_SESSIONS = 1024
-DEFAULT_INVOKE_TPS = 30
+class CodeInterpreterQuotas:
+    """Shared AWS quotas for Code Interpreter API operations.
+
+    References:
+        - [AWS Bedrock AgentCore default quotas](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/bedrock-agentcore-limits.html)
+
+    Create one instance and pass it to all `CodeInterpreterToolkit` instances
+    to enforce account-wide limits across concurrent sessions.
+
+    Manages three concerns:
+        - **Session semaphore**: caps concurrent sessions (AWS concurrent session quota).
+        - **Rate limiters**: caps API request initiation rate for start/invoke/stop
+          (AWS TPS quotas) to prevent throttling errors.
+        - **Thread pool executor**: sized to match `max_sessions` so each session can
+          have one in-flight blocking boto3 call without starving others.
+    """
+
+    DEFAULT_SESSION_CONCURRENCY = 1000
+    DEFAULT_START_TPS = 30
+    DEFAULT_INVOKE_TPS = 30
+    DEFAULT_STOP_TPS = 30
+
+    def __init__(
+        self,
+        session_concurrency: int = DEFAULT_SESSION_CONCURRENCY,
+        start_tps: float = DEFAULT_START_TPS,
+        invoke_tps: float = DEFAULT_INVOKE_TPS,
+        stop_tps: float = DEFAULT_STOP_TPS,
+    ):
+        """Initialize a `CodeInterpreterQuotas` instance."""
+        self.session_semaphore = asyncio.Semaphore(session_concurrency)
+        self.start_limiter = AsyncLimiter(start_tps, time_period=1)
+        self.invoke_limiter = AsyncLimiter(invoke_tps, time_period=1)
+        self.stop_limiter = AsyncLimiter(stop_tps, time_period=1)
+        self.executor = ThreadPoolExecutor(max_workers=session_concurrency)
+
+    def to_thread(self, func: Any, /, *args: Any, **kwargs: Any) -> Any:
+        """Run a blocking function in the quotas thread pool (or default pool if no quotas)."""
+        return asyncio.get_running_loop().run_in_executor(self.executor, partial(func, *args, **kwargs))
 
 
 class CodeInterpreterToolkit:
@@ -43,89 +79,72 @@ class CodeInterpreterToolkit:
           `cleanup` when done to close the session.
     """
 
+    CODE_INTERPRETER_ID = "aws.codeinterpreter.v1"
+
     def __init__(
         self,
         client: BaseClient,
         session_name: str = "strands-env",
-        concurrency: asyncio.Semaphore | int = DEFAULT_MAX_SESSIONS,
-        rate_limiter: AsyncLimiter | None = None,
+        quotas: CodeInterpreterQuotas | None = None,
     ):
         """Initialize a `CodeInterpreterToolkit` instance.
 
         Args:
             client: boto3 client for bedrock-agentcore service.
             session_name: Name for the code interpreter session.
-            concurrency: Semaphore or max concurrent sessions. Defaults to 1024 (AWS default quota).
-                Share a single `asyncio.Semaphore` across all toolkit instances to enforce
-                account-wide session limits.
-            rate_limiter: Rate limiter for `InvokeCodeInterpreter` API calls. Defaults to 30 TPS
-                (AWS default quota). Share a single `aiolimiter.AsyncLimiter` across all toolkit
-                instances to enforce account-wide TPS limits.
+            quotas: Shared quotas for rate limiting, session concurrency, and thread pool.
+                Create one `CodeInterpreterQuotas` instance and pass it to all toolkit
+                instances to enforce account-wide limits.
         """
         self.session_name = session_name
-        self._client = client
-        self._session_id: str | None = None
-        self._rate_limiter = rate_limiter or AsyncLimiter(DEFAULT_INVOKE_TPS)
-        self._semaphore = concurrency if isinstance(concurrency, asyncio.Semaphore) else asyncio.Semaphore(concurrency)
+        self.client = client
+        self.session_id: str | None = None
+        self.quotas = quotas or CodeInterpreterQuotas()
         self._session_lock = asyncio.Lock()
 
-    async def _to_thread(self, func: Any, /, *args: Any, **kwargs: Any) -> Any:
-        """Run a blocking function in the default thread pool.
-
-        Args:
-            func: The blocking function to run.
-            *args: Positional arguments to pass to `func`.
-            **kwargs: Keyword arguments to pass to `func`.
-
-        Returns:
-            The return value of `func`.
-        """
-        return await asyncio.get_running_loop().run_in_executor(None, partial(func, *args, **kwargs))
-
-    async def _get_session_id(self) -> str:
-        """Get or create a code interpreter session (async, thread-safe)."""
-        if self._session_id is None:
+    async def start_session(self) -> None:
+        """Start a code interpreter session if not already started (async, thread-safe)."""
+        if self.session_id is None:
             async with self._session_lock:
-                # Double-check after acquiring lock
-                if self._session_id is not None:  # another coroutine may have set it
-                    return self._session_id  # type: ignore[unreachable]
+                # Double-check after acquiring lock as another coroutine may have set it
+                if self.session_id is not None:
+                    return  # type: ignore[unreachable]
 
-                await self._semaphore.acquire()
+                await self.quotas.session_semaphore.acquire()
+                await self.quotas.start_limiter.acquire()
                 try:
-                    response = await self._to_thread(
-                        self._client.start_code_interpreter_session,
-                        codeInterpreterIdentifier=CODE_INTERPRETER_ID,
+                    response = await self.quotas.to_thread(
+                        self.client.start_code_interpreter_session,
+                        codeInterpreterIdentifier=self.CODE_INTERPRETER_ID,
                         name=self.session_name,
                         sessionTimeoutSeconds=3600,
                     )
                 except Exception:
-                    # Release semaphore if start fails — session was never created
-                    self._semaphore.release()
+                    self.quotas.session_semaphore.release()
                     raise
-                self._session_id = response["sessionId"]
-        return self._session_id
+                self.session_id = response["sessionId"]
 
-    def _parse_stream_response(self, response: dict[str, Any]) -> str:
-        """Parse the EventStream response from `invoke_code_interpreter`.
-
-        Notes:
-            Extracts text content from result events or error messages from exceptions.
-            Returns plain text that strands will wrap in tool result format.
-        """
-        errors: list[str] = []
-
+    async def invoke(self, name: str, arguments: dict[str, Any]) -> str:
+        """Invoke the code interpreter and return parsed response."""
+        await self.start_session()
+        await self.quotas.invoke_limiter.acquire()
+        response = await self.quotas.to_thread(
+            self.client.invoke_code_interpreter,
+            codeInterpreterIdentifier=self.CODE_INTERPRETER_ID,
+            sessionId=self.session_id,
+            name=name,
+            arguments=arguments,
+        )
+        # Parse the `EventStream` response from `invoke_code_interpreter`.
         for event in response.get("stream", []):
             if "result" in event:
-                result = event["result"]
-                content = result.get("content", [])
-                # Extract text from content list
+                content = event["result"].get("content", [])
                 if isinstance(content, list):
                     texts = [c.get("text", "") for c in content if c.get("type") == "text"]
                     return "\n".join(texts) if texts else str(content)
                 return str(content)
 
-            # Check for exception events
-            for error_key in (
+            for key in (
                 "accessDeniedException",
                 "conflictException",
                 "internalServerException",
@@ -134,13 +153,10 @@ class CodeInterpreterToolkit:
                 "throttlingException",
                 "validationException",
             ):
-                if error_key in event:
-                    msg = event[error_key].get("message", error_key)
-                    errors.append(f"{error_key}: {msg}")
-                    break
+                if key in event:
+                    return f"{key}: {event[key].get('message', key)}"
 
-        # No result found - return collected errors or generic message
-        return "\n".join(errors) if errors else "No result received"
+        return "No result returned."
 
     @tool
     async def execute_code(self, code: str) -> str:
@@ -152,16 +168,7 @@ class CodeInterpreterToolkit:
         Returns:
             Execution output text or error message.
         """
-        session_id = await self._get_session_id()
-        await self._rate_limiter.acquire()
-        response = await self._to_thread(
-            self._client.invoke_code_interpreter,
-            codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-            sessionId=session_id,
-            name="executeCode",
-            arguments={"code": code, "language": "python"},
-        )
-        return self._parse_stream_response(response)
+        return await self.invoke("executeCode", {"code": code, "language": "python"})
 
     @tool
     async def execute_command(self, command: str) -> str:
@@ -173,28 +180,20 @@ class CodeInterpreterToolkit:
         Returns:
             Execution output text or error message.
         """
-        session_id = await self._get_session_id()
-        await self._rate_limiter.acquire()
-        response = await self._to_thread(
-            self._client.invoke_code_interpreter,
-            codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-            sessionId=session_id,
-            name="executeCommand",
-            arguments={"command": command},
-        )
-        return self._parse_stream_response(response)
+        return await self.invoke("executeCommand", {"command": command})
 
     async def cleanup(self) -> None:
         """Clean up code interpreter session."""
-        if self._session_id:
+        if self.session_id:
+            await self.quotas.stop_limiter.acquire()
             try:
-                await self._to_thread(
-                    self._client.stop_code_interpreter_session,
-                    codeInterpreterIdentifier=CODE_INTERPRETER_ID,
-                    sessionId=self._session_id,
+                await self.quotas.to_thread(
+                    self.client.stop_code_interpreter_session,
+                    codeInterpreterIdentifier=self.CODE_INTERPRETER_ID,
+                    sessionId=self.session_id,
                 )
             except Exception:
                 pass  # Ignore cleanup errors
             finally:
-                self._semaphore.release()
-            self._session_id = None
+                self.quotas.session_semaphore.release()
+            self.session_id = None

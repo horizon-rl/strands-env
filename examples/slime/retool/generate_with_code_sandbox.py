@@ -22,7 +22,6 @@ Uses:
 - Tool iteration/call limits
 """
 
-import asyncio
 import logging
 
 from slime.rollout.sglang_rollout import GenerateState  # type: ignore
@@ -33,6 +32,7 @@ from strands_env.core.models import sglang_model_factory
 from strands_env.core.types import Action, TaskContext
 from strands_env.environments.code_sandbox import CodeSandboxEnv
 from strands_env.rewards.math_verify_reward import MathVerifyReward
+from strands_env.tools import CodeInterpreterQuotas
 from strands_env.utils.aws import get_client
 from strands_env.utils.slime import RolloutLogger
 
@@ -53,8 +53,8 @@ Guidelines:
 MAX_TOOL_ITERS = 5
 MAX_TOOL_CALLS = None
 
-# Shared concurrency/rate limits enforce account-wide Code Interpreter quotas across all concurrent sessions.
-SESSION_SEMAPHORE = asyncio.Semaphore(1024)
+# Shared quotas enforce account-wide Code Interpreter limits across all concurrent sessions.
+QUOTAS = CodeInterpreterQuotas()
 
 
 async def generate_and_rm(args, sample: Sample, sampling_params) -> Sample:
@@ -78,7 +78,7 @@ async def generate_and_rm(args, sample: Sample, sampling_params) -> Sample:
         system_prompt=SYSTEM_PROMPT,
         max_tool_iters=MAX_TOOL_ITERS,
         max_tool_calls=MAX_TOOL_CALLS,
-        concurrency=SESSION_SEMAPHORE,
+        quotas=QUOTAS,
         verbose=False,
     )
 
