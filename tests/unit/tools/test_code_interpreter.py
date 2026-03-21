@@ -95,7 +95,8 @@ class TestCodeInterpreterToolkit:
         assert quotas.session_semaphore._value == 0
 
         # tk2 should block — verify with timeout
-        with pytest.raises(TimeoutError):
+        # Use (TimeoutError, asyncio.TimeoutError) for Python 3.10 compatibility
+        with pytest.raises((TimeoutError, asyncio.TimeoutError)):
             await asyncio.wait_for(tk2.start_session(), timeout=0.1)
 
         # After cleanup, tk2 can proceed
