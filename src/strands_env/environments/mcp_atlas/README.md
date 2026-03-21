@@ -1,16 +1,28 @@
 # MCP-Atlas Environment
 
-MCP environment for [MCP-Atlas](https://github.com/scaleapi/mcp-atlas) benchmark — 500 tasks across 36 MCP servers (220+ tools).
+MCP environment for [MCP-Atlas](https://github.com/scaleapi/mcp-atlas) benchmark — 500 tasks across 36 MCP servers (307 tools).
+
+## Setup
+
+Start the [MCP-Atlas](https://github.com/scaleapi/mcp-atlas) Docker container:
+
+```bash
+# Default — 20 servers that work without API keys
+docker run -d -p 1984:1984 ghcr.io/scaleapi/mcp-atlas:1.2.5
+
+# All servers — copy .env.template to .env and fill in API keys
+docker run -d -p 1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.5
+```
 
 ## Usage
 
-Requires a running [MCP-Atlas](https://github.com/scaleapi/mcp-atlas) server. Pass its base URL via a shared `httpx.AsyncClient`.
+Pass the MCP-Atlas server URL via a shared `httpx.AsyncClient`.
 
 ```python
 import httpx
 from strands_env.environments.mcp_atlas import MCPAtlasEnvironment
 
-http_client = httpx.AsyncClient(base_url="http://<mcp-atlas-host>:<port>")
+http_client = httpx.AsyncClient(base_url="http://localhost:1984")
 
 env = MCPAtlasEnvironment(
     model_factory=model_factory,
@@ -44,7 +56,14 @@ The evaluator must prepare these fields on `TaskContext` (via `MCPAtlasTaskConte
 
 ## Reward
 
-`MCPAtlasRewardFunction` implements per-claim LLM-as-judge evaluation following MCP-Atlas's scoring methodology. The judge model is constructed by the caller and passed as `reward_fn`.
+`MCPAtlasRewardFunction` implements per-claim LLM-as-judge evaluation following MCP-Atlas's scoring methodology. It requires a Strands `Model` as the judge, passed when constructing the reward function:
+
+```python
+from strands_env.environments.mcp_atlas import MCPAtlasRewardFunction
+
+# judge_model is any Strands Model instance (e.g. BedrockModel, SGLangModel, LiteLLMModel)
+reward_fn = MCPAtlasRewardFunction(judge_model)
+```
 
 Each GTFA claim is scored individually:
 - `fulfilled` = 1.0
