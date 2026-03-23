@@ -34,12 +34,10 @@ def check_server_health(base_url: str, timeout: float = 5.0) -> None:
 
 
 def get_model_id(base_url: str, timeout: float = 5.0) -> str:
-    """Get the model ID from the SGLang server.
-
-    Notes:
-        Sync convenience using httpx. For async runtime use, see
-        `SGLangClient.get_model_info()` which uses aiohttp.
-    """
-    response = httpx.get(f"{base_url}/get_model_info", timeout=timeout)
+    """Get the model ID from the SGLang server via ``/v1/models``."""
+    response = httpx.get(f"{base_url}/v1/models", timeout=timeout)
     response.raise_for_status()
-    return str(response.json()["model_path"])
+    models = response.json()["data"]
+    if not models:
+        raise RuntimeError(f"No models found at {base_url}/v1/models")
+    return str(models[0]["id"])
