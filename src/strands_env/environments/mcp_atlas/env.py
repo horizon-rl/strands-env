@@ -20,7 +20,7 @@ import logging
 
 import httpx
 from mcp.types import Tool as MCPToolDef
-from typing_extensions import NotRequired, Unpack, override
+from typing_extensions import Unpack, override
 
 from strands_env.core.environment import Environment, EnvironmentConfig
 from strands_env.core.models import ModelFactory
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 class MCPAtlasConfig(EnvironmentConfig):
     """Serializable configuration for `MCPAtlasEnvironment`."""
 
-    enabled_tools: NotRequired[list[str]]
-    tool_timeout: NotRequired[int]
+    enabled_tools: list[str]
+    tool_timeout: int
 
 
 class MCPAtlasEnvironment(Environment):
@@ -50,6 +50,26 @@ class MCPAtlasEnvironment(Environment):
     """
 
     DEFAULT_DOCKER_URL = "http://localhost:1984"
+
+    def __init__(
+        self,
+        *,
+        model_factory: ModelFactory,
+        http_client: httpx.AsyncClient,
+        reward_fn: RewardFunction | None = None,
+        **config: Unpack[MCPAtlasConfig],
+    ):
+        """Initialize a `MCPAtlasEnvironment` instance."""
+        super().__init__(
+            model_factory=model_factory,
+            reward_fn=reward_fn,
+            **config,  # type: ignore[misc]
+        )
+        self._http_client = http_client
+        self._tools: list[MCPAtlasTool] = []
+        self._tool_timeout: int = int(self.config.get("tool_timeout", 60))
+        enabled = self.config.get("enabled_tools")
+        self._enabled_tools = set(enabled) if enabled else None
 
     @staticmethod
     def create_client(
@@ -73,26 +93,6 @@ class MCPAtlasEnvironment(Environment):
             max_keepalive_connections=max_keepalive_connections,
         )
         return httpx.AsyncClient(base_url=base_url, limits=limits)
-
-    def __init__(
-        self,
-        *,
-        model_factory: ModelFactory,
-        http_client: httpx.AsyncClient,
-        reward_fn: RewardFunction | None = None,
-        **config: Unpack[MCPAtlasConfig],
-    ):
-        """Initialize a `MCPAtlasEnvironment` instance."""
-        super().__init__(
-            model_factory=model_factory,
-            reward_fn=reward_fn,
-            **config,  # type: ignore[misc]
-        )
-        self._http_client = http_client
-        self._tools: list[MCPAtlasTool] = []
-        self._tool_timeout: int = int(self.config.get("tool_timeout", 60))
-        enabled = self.config.get("enabled_tools")
-        self._enabled_tools = set(enabled) if enabled else None
 
     @override
     async def reset(self) -> None:
