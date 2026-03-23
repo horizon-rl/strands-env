@@ -22,10 +22,12 @@ from typing import TypeAlias
 
 import boto3
 from botocore.client import BaseClient
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 
 BotoClient: TypeAlias = BaseClient
+BotoClientConfig: TypeAlias = Config
 
 
 def get_session(
@@ -92,6 +94,7 @@ def get_client(
     profile_name: str | None = None,
     role_arn: str | None = None,
     session_name: str = "strands-env",
+    config: BotoClientConfig | None = None,
 ) -> BotoClient:
     """Get a cached boto3 client.
 
@@ -101,6 +104,8 @@ def get_client(
         profile_name: Optional AWS profile name from ~/.aws/config.
         role_arn: Optional ARN of the IAM role to assume.
         session_name: Session name for assumed role (only used if role_arn provided).
+        config: Optional `botocore.config.Config` for client-level settings
+            (e.g. `max_pool_connections`, `connect_timeout`, `read_timeout`, `retries`).
 
     Notes:
         - Each client gets its own dedicated boto3 Session, avoiding the thread-safety
@@ -113,7 +118,7 @@ def get_client(
     else:
         session = boto3.Session(region_name=region, profile_name=profile_name)
     logger.info("Creating cached boto3 client: service=%s, region=%s", service_name, region)
-    return session.client(service_name, region_name=region)
+    return session.client(service_name, region_name=region, config=config)
 
 
 def check_credentials(session: boto3.Session) -> bool:

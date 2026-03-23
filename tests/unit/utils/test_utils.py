@@ -117,7 +117,7 @@ class TestGetClient:
 
         client = get_client("s3", region="us-east-1")
         assert client is mock_session.client.return_value
-        mock_session.client.assert_called_once_with("s3", region_name="us-east-1")
+        mock_session.client.assert_called_once_with("s3", region_name="us-east-1", config=None)
 
     @patch("strands_env.utils.aws.boto3.Session")
     def test_cached_by_service_and_region(self, mock_session_cls):
