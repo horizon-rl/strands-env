@@ -49,6 +49,31 @@ class MCPAtlasEnvironment(Environment):
         - ``cleanup()`` clears the tool list only.
     """
 
+    DEFAULT_DOCKER_URL = "http://localhost:1984"
+
+    @staticmethod
+    def create_client(
+        base_url: str = DEFAULT_DOCKER_URL,
+        *,
+        max_connections: int = 100,
+        max_keepalive_connections: int = 20,
+    ) -> httpx.AsyncClient:
+        """Create an `httpx.AsyncClient` configured for the MCP-Atlas container.
+
+        The caller owns the returned client's lifecycle and should close it
+        when done (e.g. via ``async with`` or explicit ``aclose()``).
+
+        Args:
+            base_url: Base URL of the MCP-Atlas Docker container.
+            max_connections: Maximum number of concurrent connections.
+            max_keepalive_connections: Maximum number of idle keep-alive connections.
+        """
+        limits = httpx.Limits(
+            max_connections=max_connections,
+            max_keepalive_connections=max_keepalive_connections,
+        )
+        return httpx.AsyncClient(base_url=base_url, limits=limits)
+
     def __init__(
         self,
         *,

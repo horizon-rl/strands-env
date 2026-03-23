@@ -16,13 +16,20 @@ docker run -d -p 1984:1984 --env-file .env ghcr.io/scaleapi/mcp-atlas:1.2.5
 
 ## Usage
 
-Pass the MCP-Atlas server URL via a shared `httpx.AsyncClient`.
+Create a shared HTTP client via `MCPAtlasEnvironment.create_client()` and pass it to the environment.
 
 ```python
-import httpx
 from strands_env.environments.mcp_atlas import MCPAtlasEnvironment
 
-http_client = httpx.AsyncClient(base_url="http://localhost:1984")
+# Create a shared client (caller owns lifecycle — close when done)
+http_client = MCPAtlasEnvironment.create_client()
+
+# Or with custom URL / connection pool settings
+http_client = MCPAtlasEnvironment.create_client(
+    base_url="http://my-host:1984",
+    max_connections=<max_connections>,
+    max_keepalive_connections=<max_keepalive_connections>,
+)
 
 env = MCPAtlasEnvironment(
     model_factory=model_factory,
